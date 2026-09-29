@@ -96,6 +96,7 @@
 ## Git
 
 - GitHub: `soichiroteacher/timetable`(**公開**。2026-09-30 作成、ブランチ `master`)。
+- GitHub Pages(確認用): https://soichiroteacher.github.io/timetable/ (2026-09-30 有効化。`master` のフォルダ直下をそのまま公開。先生方が使うのは校務共有サーバーに置いたもの)。
 - 公開の前に、2026-09-26〜09-27 のローカルの履歴(変換ツールの見本が実際の学校の時間割から作られていた)は、GitHub に送らないよう、`.git` をアプリのフォルダの外(`C:\Users\idolo\Documents\projects\_backup\timetable-git-2026-09-30`)に移し、新しい履歴で始めた。
 - `claudeからの引継ぎ/`(最初に受け取った資料。古い見本が入っている)は `.gitignore` で除外している。
 - アプリのファイルを変えたら、`appcopy\timetable\` へのコピーと、commit・push を行う(ユーザーのグローバル指示)。
