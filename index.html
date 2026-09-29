@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>時間割ツール</title>
 <!--
-  時間割(基本時間割の入力・学級の時間割の自動作成。これから週ごとの時間割・時数の管理を足していく)
+  時間割(基本時間割の入力・学級の時間割の自動作成・行事予定とつないだ週時間割・時数の実績と予測)
   - このフォルダ(index.html・css・js)をまとめて置き、index.html をダブルクリックで開けば動く。外部ライブラリは使っていない。
   - Chrome / Edge 専用(データファイルへの直接保存に File System Access API を使うため)。
   - 作りの説明は HANDOFF.md、使い方は README.md を参照。
@@ -32,9 +32,9 @@
 </header>
 
 <nav class="tabs">
-  <button data-tab="teacher">教員の時間割</button>
-  <button data-tab="classes">学級の時間割</button>
-  <button data-tab="week">週の時間割</button>
+  <button data-tab="teacher">基本時間割(教員)</button>
+  <button data-tab="classes">基本時間割(生徒)</button>
+  <button data-tab="week">週時間割</button>
   <button data-tab="hours">時数</button>
   <button data-tab="settings">設定</button>
   <a class="tab-link" href="timetable_converter.html" target="_blank" title="時間割の Excel を学級ごとの形に変える・2つの時間割を比べる道具(別のページで開きます)">Excel の変換・比較ツール ↗</a>

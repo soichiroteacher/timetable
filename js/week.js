@@ -1,5 +1,5 @@
 'use strict';
-// 「週の時間割」タブ: 行事予定(state.events)の①〜⑥と、基本時間割(教員の時間割)から、選んだ週の時間割を作る。
+// 「週時間割」タブ: 行事予定(state.events)の①〜⑥と、基本時間割(教員の時間割)から、選んだ週の時間割を作る。
 //
 // 行事予定の①〜⑥の読み方(行事予定アプリの実績タブと同じ):
 //   「1」〜「6」 … 基本時間割の、同じ曜日の何時間目の授業をするか(例: 月曜の③に「2」→ 月曜2時間目の授業)
@@ -175,7 +175,7 @@ TABS.week = {
     if(!view.week || !/^\d{4}-\d{2}-\d{2}$/.test(view.week)) view.week = defaultWeek();
     view.week = mondayOf(view.week);
     const head =
-      '<div class="toolbar"><h2>週の時間割</h2><span class="hint">行事予定の①〜⑥と、基本の時間割(「教員の時間割」)から、週ごとの時間割を作ります。</span></div>'
+      '<div class="toolbar"><h2>週時間割</h2><span class="hint">行事予定の①〜⑥と、基本の時間割(「基本時間割(教員)」)から、週ごとの時間割を作ります。</span></div>'
       + '<div class="toolbar">'
       + '<button class="edit-act" data-act="importEvents">📥 行事予定を読み込む</button>'
       + (isSample ? '<button data-act="exportSampleEvents" title="行事予定アプリのデータファイルと同じ形の、見本のファイルを作ります">📤 見本の行事予定を書き出す</button>' : '')
@@ -201,8 +201,8 @@ TABS.week = {
       + '<b>'+mdLabel(view.week)+' 〜 '+mdLabel(last)+'</b>'
       + '</div>'
       + '<div class="toolbar"><span class="seg" id="wModeSeg">'
-      + '<button data-m="class"'+(mode==='class'?' class="active"':'')+'>学級の時間割</button>'
-      + '<button data-m="teacher"'+(mode==='teacher'?' class="active"':'')+'>教員の時間割</button>'
+      + '<button data-m="teacher"'+(mode==='teacher'?' class="active"':'')+'>教員</button>'
+      + '<button data-m="class"'+(mode==='class'?' class="active"':'')+'>生徒</button>'
       + '</span>'
       + (mode==='class' ? '<span class="seg" id="wGradeSeg"><button data-g="0"'+(view.classGrade===0?' class="active"':'')+'>全学年</button>'
           + grades.map(g=>'<button data-g="'+g+'"'+(view.classGrade===g?' class="active"':'')+'>'+g+'年</button>').join('')+'</span>' : '')
@@ -212,10 +212,10 @@ TABS.week = {
       + weekEventsHtml(w)
       + weekIssuesHtml(w)
       + (mode==='class' ? '<details class="howto" id="wHowto"><summary>この週だけ時間割を変えるには(出張などの入れ替え)</summary><ul>'
-        + '<li>「✏ 編集する」を押してから、学級の時間割のマスをクリックして、教科を入れます(「数」「数学」「英」など。Excel のようにコピー・貼り付けもできます)。受け持つ先生は、基本の時間割から自動で決まります。</li>'
+        + '<li>「✏ 編集する」を押してから、「生徒」の表のマスをクリックして、教科を入れます(「数」「数学」「英」など。Excel のようにコピー・貼り付けもできます)。受け持つ先生は、基本の時間割から自動で決まります。</li>'
         + '<li>「学活」「道徳」「総合」は担任の先生の授業になります。授業をなくすときは「なし」、行事は「行」と入れます。</li>'
         + '<li>変えたマスは太い枠で表示され、表の下の「この週の変更」に一覧が出ます。Delete で消すと、元(行事予定と基本の時間割どおり)に戻ります。</li>'
-        + '<li>入れ替えで同じ先生が同じ時間に2か所の授業に入ってしまうと、オレンジ色になり、上に出ます。「教員の時間割」に切り替えると、先生ごとに確かめられます。</li>'
+        + '<li>入れ替えで同じ先生が同じ時間に2か所の授業に入ってしまうと、オレンジ色になり、上に出ます。上の「教員」に切り替えると、先生ごとに確かめられます。</li>'
         + '</ul></details>' : '')
       + '<div id="wGrid"></div>'
       + weekChangesHtml(w)
@@ -340,7 +340,7 @@ function resolveChange(input, c, hrTeacher){
     const sub = CONFIG.homeroomSubjects[s];
     cell.text = subjectShort(sub); cell.cls = 'k-hr'; cell.title = sub; cell.subs = [sub]; cell.kind = 'lesson';
     if(hrTeacher[c.id]){ cell.teacherIds = [hrTeacher[c.id]]; puts.push([hrTeacher[c.id], { cid:c.id, origin:'hr:'+c.id, subject:sub }]); }
-    else warn = c.label+'の担任の先生が「教員の時間割」の担当の欄にありません。';
+    else warn = c.label+'の担任の先生が「基本時間割(教員)」の担当の欄にありません。';
     return { cell, puts, warn };
   }
   // 技術と家庭のように、2つの教科を1コマで受けるもの

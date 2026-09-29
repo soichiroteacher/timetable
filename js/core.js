@@ -418,5 +418,5 @@ $('nOk').addEventListener('click', async ()=>{
   lastLockStamp = Date.now();
   view.tab = 'settings'; savePref();
   renderAll();
-  alert('作りました。はじめに「設定」で学級数・時限数と先生を入れてください。\n今お使いの時間割の Excel があれば、「教員の時間割」タブの「Excel から読み込む」で先生と時間割をまとめて取り込めます。');
+  alert('作りました。はじめに「設定」で学級数・時限数と先生を入れてください。\n今お使いの時間割の Excel があれば、「基本時間割(教員)」タブの「Excel から読み込む」で先生と時間割をまとめて取り込めます。');
 });

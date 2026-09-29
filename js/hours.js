@@ -1,7 +1,7 @@
 'use strict';
 // 「時数」タブ: 学級ごと・教科ごとの授業時数の実績と予測を数え、年間の必要時数と比べる。
 //
-// - 数え方: 年度の週を1つずつ「週の時間割」(buildWeek)で組み立て、学級の時間割のマスを数える。
+// - 数え方: 年度の週を1つずつ「週時間割」(buildWeek)で組み立て、学級の時間割のマスを数える。
 //   週ごとの変更(state.changes)も入る。行事予定の①〜⑥が空欄の日は授業なし(週の時間割と同じ)。
 // - 実績 = 基準日より前の日の分、予定 = 基準日から年度末までの分、予測 = 実績 + 予定。
 // - 技術と家庭は、必要時数では「技術家庭」にまとめて比べる(CONFIG.requiredSubjectOf)。1コマに2教科(技家)のときは半分ずつ数える。
@@ -68,9 +68,9 @@ function defaultHoursDate(){
 TABS.hours = {
   render(){
     const el = $('tab-hours');
-    const head = '<div class="toolbar"><h2>時数(実績と予測)</h2><span class="hint">週の時間割から、学級ごと・教科ごとの授業時数を数えて、年間の必要時数と比べます。</span></div>';
+    const head = '<div class="toolbar"><h2>時数(実績と予測)</h2><span class="hint">週時間割から、学級ごと・教科ごとの授業時数を数えて、年間の必要時数と比べます。</span></div>';
     if(!state.events){
-      el.innerHTML = head + '<div class="banner"><p><b>行事予定がまだ読み込まれていません。</b></p><p class="hint">時数は、行事予定の①〜⑥と時間割から数えます。「週の時間割」の画面で、「📥 行事予定を読み込む」を押してください。</p></div>';
+      el.innerHTML = head + '<div class="banner"><p><b>行事予定がまだ読み込まれていません。</b></p><p class="hint">時数は、行事予定の①〜⑥と時間割から数えます。「週時間割」の画面で、「📥 行事予定を読み込む」を押してください。</p></div>';
       return;
     }
     const fy = state.events.fiscalYear;

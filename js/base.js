@@ -1,5 +1,5 @@
 'use strict';
-// 「教員の時間割」タブ(入力する表)と「学級の時間割」タブ(自動でできる表)
+// 「基本時間割(教員)」タブ(入力する表)と「基本時間割(生徒)」タブ(自動でできる表)
 
 //////////////////////// 確認が必要なところ(両方のタブで使う) ////////////////////////
 function issuesHtml(tt){
@@ -23,7 +23,7 @@ TABS.teacher = {
     const el = $('tab-teacher');
     el.innerHTML =
       '<div class="toolbar">'
-      + '<h2>教員の時間割(基本)</h2>'
+      + '<h2>基本時間割(教員)</h2>'
       + '<span class="hint">縦が先生、横が曜日と時限です。マスには、授業をする学級(例: 1-2)を入れます。</span>'
       + '</div>'
       + '<div class="toolbar">'
@@ -43,7 +43,7 @@ TABS.teacher = {
       + '<li>マスをクリックして文字を打ち、Enter で決まります。Excel のように、範囲を選んでコピー・貼り付け(Ctrl+C / Ctrl+V)、Delete で消去ができます。</li>'
       + '<li><b>学級の授業</b>: 「1-2」(1年2組)。2つの学級の合同は「3-12」(3年1組と2組)。</li>'
       + '<li><b>道徳・学活・総合</b>: 担任の先生の行に「道徳」「学活」「総合」(または「総/学」)と書くと、その先生の学級の授業になります。担任の学級は「担当」の欄に「1-2担」のように書きます。</li>'
-      + '<li><b>会議や空き時間の印</b>: 「企画」「×」などの学級名でない文字は、学級の時間割には出ません(先生の予定として残ります)。</li>'
+      + '<li><b>会議や空き時間の印</b>: 「企画」「×」などの学級名でない文字は、基本時間割(生徒)には出ません(先生の予定として残ります)。</li>'
       + '<li>いちばん下の空いている行に書くと、先生が1人増えます。今お使いの時間割の Excel から、先生と時間割をまとめて貼り付けることもできます(左上の「担当」から右下まで)。</li>'
       + '</ul></details>'
       + '<div id="tGrid"></div>';
@@ -160,7 +160,7 @@ TABS.classes = {
     if(view.classGrade && !grades.includes(view.classGrade)) view.classGrade = 0;
     const el = $('tab-classes');
     el.innerHTML =
-      '<div class="toolbar"><h2>学級の時間割(基本)</h2><span class="hint">「教員の時間割」から自動でできます。ここでは直せません(直すときは「教員の時間割」で)。</span></div>'
+      '<div class="toolbar"><h2>基本時間割(生徒)</h2><span class="hint">「基本時間割(教員)」から自動でできます。ここでは直せません(直すときは「基本時間割(教員)」で)。</span></div>'
       + '<div class="toolbar"><span class="seg" id="cGradeSeg">'
       + '<button data-g="0"'+(view.classGrade===0?' class="active"':'')+'>全学年</button>'
       + grades.map(g=>'<button data-g="'+g+'"'+(view.classGrade===g?' class="active"':'')+'>'+g+'年</button>').join('')

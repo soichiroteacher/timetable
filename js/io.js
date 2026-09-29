@@ -161,7 +161,7 @@ async function importXlsxFile(file){
   catch(e){ alert('シート「'+sheet.name+'」を読み取れませんでした。\n'+e.message); return; }
   const dayText = res.days.map(d=>CONFIG.weekdays[d.wd]+d.periods).join('・');
   const nCells = res.teachers.reduce((a,t)=>a+Object.keys(t.cells).length, 0);
-  if(!confirm('シート「'+sheet.name+'」から、次の内容を読み込みます。\n\n先生: '+res.teachers.length+'人\n曜日と時限: '+dayText+'\n入力のあるマス: '+nCells+'\n\n今の「教員の時間割」(先生の一覧と時間割)は、すべて置き換わります。よろしいですか？')) return;
+  if(!confirm('シート「'+sheet.name+'」から、次の内容を読み込みます。\n\n先生: '+res.teachers.length+'人\n曜日と時限: '+dayText+'\n入力のあるマス: '+nCells+'\n\n今の「基本時間割(教員)」(先生の一覧と時間割)は、すべて置き換わります。よろしいですか？')) return;
   pushUndo();
   state.meta.days = res.days.slice().sort((a,b)=>a.wd-b.wd);
   state.teachers = []; state.base = {};
@@ -178,7 +178,7 @@ async function importXlsxFile(file){
   const grew = [];
   state.meta.grades.forEach(g=>{ if(maxNum[g.grade] && maxNum[g.grade] !== g.classes){ grew.push(g.grade+'年を'+maxNum[g.grade]+'学級に'); g.classes = maxNum[g.grade]; } });
   markDirty(); renderAll();
-  alert('読み込みました。'+(grew.length ? '\n(時間割に合わせて、学級数を '+grew.join('、')+'しました)' : '')+'\n\n「学級の時間割」タブで、学級ごとの時間割と、確認が必要なところを見てください。');
+  alert('読み込みました。'+(grew.length ? '\n(時間割に合わせて、学級数を '+grew.join('、')+'しました)' : '')+'\n\n「基本時間割(生徒)」タブで、学級ごとの時間割と、確認が必要なところを見てください。');
 }
 
 //////////////////////// Excel に書き出す ////////////////////////
