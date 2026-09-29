@@ -1,0 +1,69 @@
+'use strict';
+// 画面ガイド(はじめての人向けの使い方の案内)。画面の部品を1つずつ枠で囲んで説明する。
+// 画面のボタンの名前や位置を変えたら、ここの説明も同時に直すこと(共通ルール)。
+
+const GUIDE_STEPS = [
+  { sel:'header.top', title:'上の帯',
+    text:'今開いているデータの年度と学校名が出ます。見本を開いているときは「見本・保存されません」と出ます。右側に「編集する」「保存」「開く」「新規作成」のボタンがあります。' },
+  { sel:'nav.tabs', title:'画面の切り替え',
+    text:'「教員の時間割」「学級の時間割」「設定」の3つの画面があります。ここを押して切り替えます。' },
+  { tab:'teacher', sel:'#tGrid', title:'教員の時間割(ここに入力します)',
+    text:'縦が先生、横が曜日と時限です。マスには、その時間に授業をする学級を「1-2」(1年2組)のように入れます。担任の先生の行に「道徳」「学活」「総合」と書くと、その先生の学級の授業になります。' },
+  { sel:'#btnEdit', title:'直すときは「編集する」',
+    text:'はじめは見るだけの状態です。直すときはここを押して、名前を入れてから始めます。終わったら同じボタン(「編集を終える」になります)を押すと保存されます。見本でも入力を試せます(見本は保存されません)。' },
+  { tab:'teacher', sel:'#tIssues', title:'確認が必要なところ',
+    text:'同じ学級の同じ時間に違う教科が重なっていたり、授業の入っていないコマがあったりすると、ここに出ます。表の中の、関係するマスにも色が付きます。' },
+  { tab:'teacher', sel:'[data-act="importXlsx"]', title:'Excel から読み込む',
+    text:'今お使いの時間割の Excel(A列に「担当」の見出しがある形)から、先生と時間割をまとめて取り込めます。試すときは、となりの「Excel に書き出す」で見本の Excel を作り、それを読み込んでみてください。' },
+  { tab:'classes', sel:'#cGrid', title:'学級の時間割(自動でできます)',
+    text:'教員の時間割から、学級ごとの時間割が自動でできます。マスにマウスを乗せると、授業をする先生の名前が出ます。直すときは「教員の時間割」で直します。' },
+  { tab:'classes', sel:'#cCounts', title:'1週間のコマ数',
+    text:'学級ごとに、教科ごとの1週間のコマ数を数えています。合計が1週間の時限の数より少ないときは、授業の入っていないコマがあります。' },
+  { tab:'settings', sel:'#tab-settings', title:'設定',
+    text:'学級数、曜日ごとの時限の数、教科、編集のパスワードを決めます。「データを書き出す(バックアップ)」で、今の状態をファイルに控えておけます。' },
+  { sel:'#btnHelp', title:'案内はいつでも見られます',
+    text:'この案内は、ここを押すといつでも見られます。自分の学校のデータを作るときは、「新規作成」から始めてください。' },
+];
+let guideIdx = -1;
+function startGuide(){
+  if(!state){ loadSample(); }
+  guideIdx = 0; showGuideStep();
+}
+function endGuide(){ guideIdx = -1; $('guide').hidden = true; }
+function showGuideStep(){
+  const st = GUIDE_STEPS[guideIdx];
+  if(!st){ endGuide(); return; }
+  if(st.tab && view.tab!==st.tab){ view.tab = st.tab; savePref(); renderAll(); }
+  const el = document.querySelector(st.sel);
+  $('guide').hidden = false;
+  $('gTitle').textContent = (guideIdx+1)+' / '+GUIDE_STEPS.length+'　'+st.title;
+  $('gText').textContent = st.text;
+  $('gPrev').disabled = guideIdx===0;
+  $('gNext').textContent = guideIdx===GUIDE_STEPS.length-1 ? '終わる' : '次へ';
+  const box = $('gBox'), bub = $('gBubble'), dim = $('gDim');
+  if(!el){ box.hidden = true; dim.style.clipPath = ''; bub.style.left = '50%'; bub.style.top = '120px'; bub.style.transform = 'translateX(-50%)'; return; }
+  // 表などの大きな部品は、上の端が見えるように置く(真ん中に合わせると、見出しが画面の外に出てしまうため)
+  el.scrollIntoView({ block: el.offsetHeight > window.innerHeight*0.5 ? 'start' : 'center', inline:'nearest' });
+  requestAnimationFrame(()=>{
+    const r = el.getBoundingClientRect();
+    // 大きすぎる部品(表など)は、見えている範囲だけを囲む
+    const top = Math.max(r.top, 4), bottom = Math.min(r.bottom, window.innerHeight-4);
+    const left = Math.max(r.left, 4), right = Math.min(r.right, window.innerWidth-4);
+    const x1 = left-6, y1 = top-6, x2 = right+6, y2 = bottom+6;
+    box.hidden = false;
+    Object.assign(box.style, { left:x1+'px', top:y1+'px', width:(x2-x1)+'px', height:(y2-y1)+'px' });
+    // 囲んだところだけ暗くしない(暗い幕に穴をあける)
+    dim.style.clipPath = 'polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, '+x1+'px '+y1+'px, '+x2+'px '+y1+'px, '+x2+'px '+y2+'px, '+x1+'px '+y2+'px, '+x1+'px '+y1+'px)';
+    bub.style.transform = '';
+    const bw = Math.min(460, window.innerWidth-20);
+    bub.style.width = bw+'px';
+    const bh = bub.offsetHeight || 170;
+    if(y2 + 10 + bh < window.innerHeight){ bub.style.top = (y2+10)+'px'; bub.style.left = Math.max(10, Math.min(left, window.innerWidth-bw-10))+'px'; }
+    else if(y1 - 10 - bh > 0){ bub.style.top = (y1-10-bh)+'px'; bub.style.left = Math.max(10, Math.min(left, window.innerWidth-bw-10))+'px'; }
+    else { bub.style.top = (window.innerHeight-bh-16)+'px'; bub.style.left = (window.innerWidth-bw-24)+'px'; } // 上にも下にも入らないときは、右下の角に
+  });
+}
+$('gNext').addEventListener('click', ()=>{ guideIdx++; showGuideStep(); });
+$('gPrev').addEventListener('click', ()=>{ if(guideIdx>0){ guideIdx--; showGuideStep(); } });
+$('gClose').addEventListener('click', endGuide);
+window.addEventListener('resize', ()=>{ if(guideIdx>=0) showGuideStep(); });

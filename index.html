@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>時間割</title>
+<!--
+  時間割(基本時間割の入力・学級の時間割の自動作成。これから週ごとの時間割・時数の管理を足していく)
+  - このフォルダ(index.html・css・js)をまとめて置き、index.html をダブルクリックで開けば動く。外部ライブラリは使っていない。
+  - Chrome / Edge 専用(データファイルへの直接保存に File System Access API を使うため)。
+  - 作りの説明は HANDOFF.md、使い方は README.md を参照。
+  - 以前からある変換ツールは timetable_converter.html(別のページ。上の帯のリンクから開ける)。
+-->
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="top">
+  <h1>時間割</h1>
+  <span id="schoolTitle"></span>
+  <span class="spacer"></span>
+  <span id="lockWarning" hidden></span>
+  <span id="editBadge" class="edit-badge">閲覧のみ</span>
+  <button id="btnEdit">✏ 編集する</button>
+  <button id="btnReload" title="ほかの先生が保存した最新の内容を読み直します">↻ 最新にする</button>
+  <button id="btnSave" disabled>保存</button>
+  <button id="btnOpen">開く</button>
+  <button id="btnNew">新規作成</button>
+  <button id="btnHelp">❓ 使い方</button>
+  <span id="status"></span>
+  <span id="fileName"></span>
+</header>
+
+<nav class="tabs">
+  <button data-tab="teacher">教員の時間割</button>
+  <button data-tab="classes">学級の時間割</button>
+  <button data-tab="settings">設定</button>
+  <a class="tab-link" href="timetable_converter.html" target="_blank" title="時間割の Excel を学級ごとの形に変える・2つの時間割を比べる道具(別のページで開きます)">Excel の変換・比較ツール ↗</a>
+</nav>
+
+<main>
+  <div id="startBanner" class="banner" hidden>
+    <p><b>データファイルを開いてください。</b>データファイル(.json)は、校務共有サーバーのこのアプリと同じフォルダに置いてあります。</p>
+    <p class="hint">年度のはじめに1回だけ「新規作成」でデータファイルを作ります(1年分・全学年で1つ)。どんなアプリか試すだけなら「見本で試す」を押してください(見本は保存されません)。</p>
+    <div class="line">
+      <button class="primary" id="bnOpen">データファイルを開く</button>
+      <button id="bnNew">新規作成</button>
+      <button id="bnSample">見本で試す</button>
+      <button id="bnGuide">❓ はじめての方へ(使い方の案内)</button>
+    </div>
+    <div id="bnLast" style="margin-top:12px" hidden></div>
+  </div>
+  <!-- 各タブの中身は js で組み立てる -->
+  <section id="tab-teacher" hidden></section>
+  <section id="tab-classes" hidden></section>
+  <section id="tab-settings" hidden></section>
+</main>
+
+<!-- 入力の候補 -->
+<datalist id="cellList"></datalist>
+<datalist id="subjectList"></datalist>
+
+<!-- ===== 「編集する」の画面 ===== -->
+<div class="overlay" id="editOverlay">
+  <div class="modal" style="width:440px">
+    <h2>編集を始めます</h2>
+    <div class="row"><span class="k">お名前</span><span class="v"><input type="text" id="eName"><div class="hint">ほかの先生に「○○先生が編集中」と表示されます。</div></span></div>
+    <div class="row" id="ePwRow"><span class="k">パスワード</span><span class="v"><input type="password" id="ePw"></span></div>
+    <div class="err" id="eErr"></div>
+    <div class="foot"><span class="spacer"></span><button id="eCancel">やめる</button><button class="primary" id="eOk">編集を始める</button></div>
+  </div>
+</div>
+
+<!-- ===== 新規作成の画面 ===== -->
+<div class="overlay" id="newOverlay">
+  <div class="modal" style="width:480px">
+    <h2>新しいデータファイルを作る</h2>
+    <div class="row"><span class="k">年度</span><span class="v"><input type="number" id="nYear" style="width:100px"> 年度</span></div>
+    <div class="row"><span class="k">学校名</span><span class="v"><input type="text" id="nSchool" placeholder="例：〇〇中学校"></span></div>
+    <div class="hint">「作る」を押すと、保存する場所を聞かれます。校務共有サーバーの、このアプリと同じフォルダを選んでください。<b>先生の名前が入るので、インターネットやクラウドのフォルダには保存しないでください。</b></div>
+    <div class="err" id="nErr"></div>
+    <div class="foot"><span class="spacer"></span><button id="nCancel">やめる</button><button class="primary" id="nOk">作る</button></div>
+  </div>
+</div>
+
+<!-- ===== 画面ガイド ===== -->
+<div id="guide" hidden>
+  <div id="gDim"></div>
+  <div id="gBox"></div>
+  <div id="gBubble">
+    <b id="gTitle"></b>
+    <p id="gText"></p>
+    <div class="line"><button id="gClose">案内を閉じる</button><span class="spacer"></span><button id="gPrev">戻る</button><button class="primary" id="gNext">次へ</button></div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/model.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/xlsx.js"></script>
+<script src="js/io.js"></script>
+<script src="js/base.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/sample.js"></script>
+<script src="js/guide.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

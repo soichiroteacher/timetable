@@ -1,0 +1,124 @@
+/* 画面の見た目(色・部品の形は ../exam-manager(定期テスト)にそろえている) */
+:root{
+  --ink:#222; --sub:#666; --line:#ccc; --line-strong:#888;
+  --bg:#fff; --bg-soft:#f4f6f8; --accent:#1f5fa8; --accent-soft:#e3edf8;
+  --warn:#c0392b; --warn-soft:#fdecea; --caution-soft:#fff3c4; --ok:#2e7d32;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; font-family:"Yu Gothic UI","Meiryo",sans-serif; font-size:16px; color:var(--ink); background:var(--bg); }
+button{ font:inherit; font-size:15px; padding:6px 14px; border:1px solid var(--line-strong); background:#fff; border-radius:6px; cursor:pointer; }
+button:hover:not(:disabled){ background:var(--bg-soft); }
+button:disabled{ opacity:.45; cursor:default; }
+button.primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+button.primary:hover:not(:disabled){ background:#174b86; }
+button.danger{ color:var(--warn); border-color:var(--warn); }
+button.small{ font-size:13px; padding:2px 8px; }
+input,select,textarea{ font:inherit; font-size:15px; padding:4px 6px; border:1px solid var(--line-strong); border-radius:5px; }
+input:disabled,select:disabled,textarea:disabled{ background:#f3f3f3; color:#333; }
+label{ cursor:pointer; }
+[hidden]{ display:none !important; }
+.hint{ font-size:13px; color:var(--sub); }
+.spacer{ flex:1; }
+.line{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0; }
+.chip{ display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border:1px solid var(--line); border-radius:14px; background:#fafafa; margin:2px; font-size:14px; }
+.sep-v{ width:1px; height:24px; background:var(--line); margin:0 4px; }
+
+/* ===== 上の帯 ===== */
+header.top{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 14px; background:var(--bg-soft); border-bottom:1px solid var(--line); }
+header.top h1{ font-size:18px; margin:0 8px 0 0; }
+#schoolTitle{ font-weight:bold; font-size:16px; }
+#status{ font-size:13px; color:var(--sub); }
+#status.dirty{ color:var(--warn); }
+#status.saved{ color:var(--ok); }
+.edit-badge{ font-size:14px; padding:3px 10px; border-radius:12px; background:#eee; }
+.edit-badge.on{ background:var(--caution-soft); border:1px solid #d9b100; }
+#lockWarning{ font-size:14px; color:var(--warn); font-weight:bold; }
+#fileName{ font-size:13px; color:var(--sub); }
+
+nav.tabs{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:4px; padding:8px 14px 0; border-bottom:2px solid var(--accent); }
+nav.tabs button{ border-radius:8px 8px 0 0; border-bottom:none; padding:8px 18px; font-size:16px; }
+nav.tabs button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+nav.tabs .tab-link{ margin-left:auto; padding:8px 4px; font-size:14px; color:var(--accent); }
+main{ padding:12px 14px 40px; }
+main section h2{ font-size:17px; margin:0; }
+main section h3{ font-size:16px; margin:22px 0 6px; }
+.toolbar{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px; }
+.seg{ display:inline-flex; }
+.seg button{ border-radius:0; margin-left:-1px; }
+.seg button:first-child{ border-radius:6px 0 0 6px; }
+.seg button:last-child{ border-radius:0 6px 6px 0; }
+.seg button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.banner{ padding:18px; border:1px solid var(--line); border-radius:8px; background:var(--bg-soft); margin:10px 0; }
+.banner p{ margin:0 0 10px; }
+.scroll-x{ overflow-x:auto; max-width:100%; }
+.warn-box{ border:1px solid var(--warn); background:var(--warn-soft); border-radius:8px; padding:8px 14px; margin:0 0 12px; font-size:14px; max-height:160px; overflow:auto; }
+.warn-box ul{ margin:4px 0 0; padding-left:20px; }
+.warn-box li.err{ font-weight:bold; }
+.ok-box{ border:1px solid var(--ok); color:var(--ok); background:#eef7ee; border-radius:8px; padding:6px 14px; margin:0 0 12px; font-size:14px; }
+details.howto{ margin:0 0 10px; font-size:14px; }
+details.howto summary{ cursor:pointer; color:var(--accent); }
+details.howto ul{ margin:6px 0; padding-left:22px; }
+.legend{ display:inline-flex; gap:6px; font-size:13px; }
+.legend .lg{ padding:1px 8px; border:1px solid var(--line); }
+.load-list{ display:flex; flex-wrap:wrap; gap:2px; }
+
+/* ===== ふつうの表 ===== */
+table.grid{ border-collapse:collapse; background:#fff; }
+table.grid th, table.grid td{ border:1px solid var(--line); padding:4px 8px; vertical-align:middle; }
+table.grid thead th{ background:#eef2f6; font-weight:bold; white-space:nowrap; text-align:center; }
+table.grid th.l{ text-align:left; background:#f7f7f7; white-space:nowrap; }
+table.grid td.c{ text-align:center; min-width:2.6em; }
+table.counts td, table.counts th{ font-size:14px; padding:3px 6px; }
+
+/* ===== Excel のような表(grid.js) ===== */
+.g-scroll{ position:relative; overflow:auto; max-height:70vh; border:1px solid #c9d0d3; background:#fff; user-select:none; }
+table.g-table{ border-collapse:separate; border-spacing:0; font-size:14px; table-layout:fixed; }
+.g-table th, .g-table td{ border-right:1px solid #e1e5e7; border-bottom:1px solid #e1e5e7; height:28px; box-sizing:border-box; }
+.g-table thead th{ position:sticky; top:0; background:#f3f5f6; z-index:3; font-weight:bold; text-align:center; padding:0 2px; height:26px; }
+.g-table thead tr.g-head2 th{ top:26px; font-weight:normal; color:#555; }
+.g-table thead th.g-sticky{ z-index:5; }
+.g-table .g-sticky{ position:sticky; background:#f8f9fa; z-index:2; }
+.g-table .g-sticky-last{ border-right:2px solid #9aa5aa; }
+.g-table .g-first{ border-left:2px solid #9aa5aa; }
+.g-table td.g-cell{ padding:0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:cell; text-align:center; }
+.g-table td.g-sticky{ text-align:left; }
+.g-table td.g-new{ background:#fbfbfb; }
+.g-table td.g-ro{ color:#666; background:#f6f6f6; }
+.g-table td.g-rowhead{ font-weight:bold; }
+.g-table td.k-hr{ color:#1f5fa8; font-weight:bold; }
+.g-table td.k-duty{ color:#888; font-size:12px; }
+.g-err, .g-table td.g-err{ background:#ffd9a8; }
+.g-warn, .g-table td.g-warn{ background:#fff3c4; }
+.c-empty, .g-table td.c-empty{ background:#e6e6e6; }
+.c-merged, .g-table td.c-merged{ box-shadow:inset 0 -3px 0 #9ab6d8; }
+.g-focused .g-table td.g-sel{ background-color:#d6e6f5; }
+.g-focused .g-table td.g-active{ outline:2px solid var(--accent); outline-offset:-2px; }
+.g-editor{ position:absolute; left:0; top:0; box-sizing:border-box; border:2px solid var(--accent); font:inherit; font-size:14px; padding:0 3px; margin:0; opacity:0; z-index:6; background:#fff; outline:none; caret-color:transparent; pointer-events:none; border-radius:0; }
+.g-editor.editing{ opacity:1; caret-color:auto; pointer-events:auto; }
+
+/* ===== 設定 ===== */
+.settings{ max-width:980px; }
+.settings > section{ border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin-bottom:14px; }
+.settings h2{ margin-bottom:8px !important; }
+.settings .row{ display:flex; align-items:center; gap:10px; margin:8px 0; flex-wrap:wrap; }
+.settings .row > .k{ width:110px; flex-shrink:0; }
+.day-in{ margin-right:10px; }
+
+/* ===== 入力画面(ダイアログ) ===== */
+.overlay{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:flex-start; justify-content:center; z-index:50; overflow:auto; padding:30px 10px; }
+.overlay.show{ display:flex; }
+.modal{ background:#fff; border-radius:10px; width:640px; max-width:100%; padding:18px 22px; box-shadow:0 8px 30px rgba(0,0,0,.25); }
+.modal h2{ font-size:18px; margin:0 0 12px; }
+.modal .row{ display:flex; gap:10px; margin:10px 0; align-items:flex-start; }
+.modal .row > .k{ width:100px; flex-shrink:0; padding-top:6px; }
+.modal .row > .v{ flex:1; }
+.modal input[type=text], .modal input[type=password]{ width:100%; }
+.modal .foot{ display:flex; gap:10px; margin-top:16px; align-items:center; }
+.modal .err{ color:var(--warn); font-size:14px; margin-top:6px; }
+
+/* ===== 画面ガイド ===== */
+#guide{ position:fixed; inset:0; z-index:60; }
+#gDim{ position:fixed; inset:0; background:rgba(0,0,0,.35); }
+#gBox{ position:fixed; border:3px solid #f0a000; border-radius:8px; pointer-events:none; }
+#gBubble{ position:fixed; background:#fff; border-radius:10px; padding:14px 18px; box-shadow:0 8px 30px rgba(0,0,0,.3); max-width:calc(100vw - 20px); }
+#gBubble p{ margin:8px 0; line-height:1.6; }
