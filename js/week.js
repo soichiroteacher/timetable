@@ -7,7 +7,8 @@
 //   「音」 … 音楽(学年での合唱練習など。受け持つ先生は決めない)
 //   「●」 … 授業はあるが、どの教科かは決まっていない
 //   「行」 … 行事 / 「欠」「弁」・空欄 … 授業なし
-// 登校日なのに①〜⑥がすべて空欄の日は、まだ入力されていないとみなし、基本時間割どおりとして表示する(色を変えて分かるようにする)。
+// 登校日なのに①〜⑥がすべて空欄の日も、授業なしとして扱う(2026-09-30 ユーザーの判断。行事予定アプリの実績タブと同じ)。お知らせだけ出す。
+// 基本時間割にない時間の番号(土曜の「1」、5時限の金曜の「6」など)は、マスを空けて警告を出す(2026-09-30 ユーザーの判断)。
 
 const WEEK_PERIODS = 6;   // 行事予定アプリの①〜⑥に合わせる
 const EVENT_CODE_SUBJECT = { '道':'道徳', '総':'総合', '学':'特別活動', '音':'音楽' };
@@ -38,7 +39,7 @@ function buildWeek(monday){
   const hrTeacher = {};   // 学級 → 担任の先生
   state.teachers.forEach(t=>{ const h = homeroomOf(t); if(h && !hrTeacher[h]) hrTeacher[h] = t.id; });
   const tname = id=>{ const t = state.teachers.find(x=>x.id===id); return t ? teacherLabel(t) : ''; };
-  const issues = [], guessed = [], changed = [];
+  const issues = [], guessed = [], changed = [], badSlots = {};
   const byClass = {}, tAt = {};   // tAt[teacherId][dateKey][p] = [{ cid, origin, subject }]
   const put = (tid, k, p, x)=>{ ((tAt[tid] = tAt[tid] || {})[k] = tAt[tid][k] || [])[p] = (tAt[tid][k][p] || []).concat([x]); };
 
@@ -57,17 +58,19 @@ function buildWeek(monday){
       for(let p=0; p<WEEK_PERIODS; p++){
         const puts = [];   // この授業を受け持つ先生(変更があれば変更のほうを使う)
         let code = codes[p] || '';
-        if(blank) code = slotKeys.has(d.wd+'-'+(p+1)) ? String(p+1) : '';
-        const cell = { text:'', title:'', cls: blank ? 'w-guess' : '', teacherIds:[] };
+        const cell = { text:'', title:'', cls:'', teacherIds:[], subs:[], kind:'none' };   // subs: 時数に数える教科、kind: lesson|tbd(教科未定)|event(行事)|none
         if(/^[1-9]$/.test(code)){
           const sk = d.wd+'-'+code;
           if(!slotKeys.has(sk)){
-            cell.text = '?'; cell.cls += ' g-warn';
+            cell.cls += ' g-warn';   // 基本時間割にない時間(土曜授業など)は空けておき、警告を出す
             cell.title = '行事予定の「'+code+'」: '+CONFIG.weekdays[d.wd]+'曜'+code+'時間目は、基本時間割にありません。';
-            issues.push({ level:'warn', text:mdLabel(d.key)+' '+c.label+'の'+CIRCLED[p]+'「'+code+'」: '+CONFIG.weekdays[d.wd]+'曜'+code+'時間目は基本時間割にありません。' });
+            // 同じ日の分はまとめて1つの警告にする(土曜授業などでは全学級に出るため)
+            const b = badSlots[d.key] = badSlots[d.key] || { wd:d.wd, codes:new Set(), classes:[] };
+            b.codes.add(code); if(!b.classes.includes(c.label)) b.classes.push(c.label);
           } else {
             const b = tt.byClass[c.id][sk];
             cell.text = b.text; cell.origin = sk;
+            cell.subs = [...new Set(b.entries.map(e=>e.subject))]; if(cell.subs.length) cell.kind = 'lesson';
             cell.teacherIds = [...new Set(b.entries.map(e=>e.teacherId))];
             cell.title = (code!==String(p+1) ? '基本の'+CONFIG.weekdays[d.wd]+'曜'+code+'時間目の授業\n' : '') + cell.teacherIds.map(tname).join('・');
             if(b.conflict) cell.cls += ' g-err';
@@ -77,15 +80,16 @@ function buildWeek(monday){
         } else if(EVENT_CODE_SUBJECT[code]){
           const sub = EVENT_CODE_SUBJECT[code];
           cell.text = subjectShort(sub); cell.cls += ' k-hr w-moved';
+          cell.subs = [sub]; cell.kind = 'lesson';
           if(code!=='音' && hrTeacher[c.id]){
             cell.teacherIds = [hrTeacher[c.id]];
             puts.push([hrTeacher[c.id], { cid:c.id, origin:'hr:'+c.id, subject:sub }]);
           }
           cell.title = sub + (cell.teacherIds.length ? '\n'+tname(cell.teacherIds[0]) : '');
         } else if(code==='●'){
-          cell.text = '●'; cell.title = '授業(教科はまだ決まっていません)'; cell.cls += ' w-moved';
+          cell.text = '●'; cell.title = '授業(教科はまだ決まっていません)'; cell.kind = 'tbd'; cell.cls += ' w-moved';
         } else if(code==='行'){
-          cell.text = '行'; cell.title = '行事'; cell.cls += ' w-event';
+          cell.text = '行'; cell.title = '行事'; cell.kind = 'event'; cell.cls += ' w-event';
         } else if(code){
           cell.text = code; cell.title = '授業なし('+code+')'; cell.cls += ' w-none';
         } else {
@@ -147,7 +151,11 @@ function buildWeek(monday){
       }
     });
   });
-  if(guessed.length) issues.push({ level:'info', text:'行事予定の①〜⑥が入っていない日('+guessed.map(mdLabel).join('、')+')は、基本時間割どおりとして表示しています(斜めの線のマス)。' });
+  Object.keys(badSlots).sort().forEach(k=>{
+    const b = badSlots[k], codes = [...b.codes].sort();
+    issues.push({ level:'warn', text:mdLabel(k)+': 行事予定の①〜⑥の「'+codes.join('」「')+'」は、'+CONFIG.weekdays[b.wd]+'曜の基本時間割にない時間なので、空けています('+b.classes.slice(0,3).join('・')+(b.classes.length>3 ? ' ほか'+(b.classes.length-3)+'学級' : '')+')。' });
+  });
+  if(guessed.length) issues.push({ level:'info', text:'行事予定の①〜⑥が入っていない登校日('+guessed.map(mdLabel).join('、')+')は、授業なしとして表示しています。授業がある日なら、行事予定アプリで①〜⑥を入れてから読み込み直してください。' });
   return { dates, classes:tt.classes, byClass, byTeacher, issues, changed };
 }
 
@@ -198,7 +206,7 @@ TABS.week = {
       + '</span>'
       + (mode==='class' ? '<span class="seg" id="wGradeSeg"><button data-g="0"'+(view.classGrade===0?' class="active"':'')+'>全学年</button>'
           + grades.map(g=>'<button data-g="'+g+'"'+(view.classGrade===g?' class="active"':'')+'>'+g+'年</button>').join('')+'</span>' : '')
-      + '<span class="legend"><span class="lg w-moved">入れ替えた時間</span><span class="lg w-event">行事</span><span class="lg w-off">休み</span><span class="lg w-guess">①〜⑥が未入力</span><span class="lg w-changed">週ごとの変更</span><span class="lg g-err">重なり</span></span>'
+      + '<span class="legend"><span class="lg w-moved">入れ替えた時間</span><span class="lg w-event">行事</span><span class="lg w-off">休み</span><span class="lg w-changed">週ごとの変更</span><span class="lg g-err">重なり</span></span>'
       + (mode==='class' ? '<span class="sep-v"></span><button class="edit-act" data-act="undo" title="Ctrl+Z">↶ 元に戻す</button><button class="edit-act" data-act="redo" title="Ctrl+Y">↷ やり直す</button>' : '')
       + '</div>'
       + weekEventsHtml(w)
@@ -324,13 +332,13 @@ function subjectTeachers(cid, subject){
 // 入力した文字を、表示するマスと受け持つ先生に読み替える
 function resolveChange(input, c, hrTeacher){
   const s = String(input).normalize('NFKC').trim();
-  const cell = { text:s, title:'', cls:'', teacherIds:[] }, puts = [];
+  const cell = { text:s, title:'', cls:'', teacherIds:[], subs:[], kind:'none' }, puts = [];
   let warn = '';
   if(CHANGE_NONE.includes(s)){ cell.text = ''; cell.cls = 'w-none'; cell.title = '授業なし'; return { cell, puts }; }
-  if(s==='行'){ cell.cls = 'w-event'; cell.title = '行事'; return { cell, puts }; }
+  if(s==='行'){ cell.kind = 'event'; cell.cls = 'w-event'; cell.title = '行事'; return { cell, puts }; }
   if(CONFIG.homeroomSubjects[s]){
     const sub = CONFIG.homeroomSubjects[s];
-    cell.text = subjectShort(sub); cell.cls = 'k-hr'; cell.title = sub;
+    cell.text = subjectShort(sub); cell.cls = 'k-hr'; cell.title = sub; cell.subs = [sub]; cell.kind = 'lesson';
     if(hrTeacher[c.id]){ cell.teacherIds = [hrTeacher[c.id]]; puts.push([hrTeacher[c.id], { cid:c.id, origin:'hr:'+c.id, subject:sub }]); }
     else warn = c.label+'の担任の先生が「教員の時間割」の担当の欄にありません。';
     return { cell, puts, warn };
@@ -341,6 +349,7 @@ function resolveChange(input, c, hrTeacher){
   if(!subs.every(x=>state.subjects.some(y=>y.name===x))){ cell.cls = 'w-none'; cell.title = '授業ではない予定('+s+')'; return { cell, puts }; }
   cell.text = mergedKey ? s : subjectShort(subs[0]);
   cell.title = subs.join('・');
+  cell.subs = subs; cell.kind = 'lesson';
   subs.forEach(sub=>{
     const ts = subjectTeachers(c.id, sub);
     if(!ts.length) warn = c.label+'で'+sub+'を受け持つ先生が、基本の時間割に見つかりません(先生なしで表示しています)。';

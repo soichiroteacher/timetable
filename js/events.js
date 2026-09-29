@@ -65,7 +65,7 @@ function computeNationalHolidays(year, overrides){
 
 //////////////////////// 行事予定のファイルを写す ////////////////////////
 // 戻り値は state.events に入れる形:
-// { fileName, importedAt, fiscalYear, schoolName, classCounts:{1:3,...},
+// { fileName, importedAt, fiscalYear, schoolName, classCounts:{1:3,...}, requiredHours:{1:{国語:140,...}}(ファイルにあれば),
 //   days: { 'YYYY-MM-DD': { hol:'祝日名'(祝日のときだけ), school:{1:true,2:true,3:false}, periods:{1:['1','2',…6つ],…}, text:'行事' } } }
 // 年度の中で「どれかの学年が登校日」か「行事の文字がある」日だけを入れる(入っていない日は休み)。
 function convertEventsFile(o, fileName, grades){
@@ -79,6 +79,16 @@ function convertEventsFile(o, fileName, grades){
   const manual = o.manualDayFlags || {};
   const out = { fileName, importedAt:new Date().toISOString(), fiscalYear:fy, schoolName:String(o.meta.schoolName||''), classCounts:{}, days:{} };
   if(o.classCounts) Object.keys(o.classCounts).forEach(k=>{ const g = Number(k.replace('g','')); if(g) out.classCounts[g] = Number(o.classCounts[k])||0; });
+  // 必要時数(行事予定アプリの設定タブの値)。無ければ、時数のタブで標準時数(CONFIG.defaultRequiredHours)を使う
+  if(o.requiredHours && typeof o.requiredHours==='object'){
+    out.requiredHours = {};
+    Object.keys(o.requiredHours).forEach(k=>{
+      const g = Number(k.replace('g','')), src = o.requiredHours[k];
+      if(!g || !src) return;
+      out.requiredHours[g] = {};
+      CONFIG.requiredSubjects.forEach(sub=>{ if(typeof src[sub]==='number') out.requiredHours[g][sub] = src[sub]; });
+    });
+  }
   for(let k = fiscalStart(fy); k <= fiscalEnd(fy); k = addDays(k, 1)){
     const d = keyToDate(k), dow = d.getDay();
     const holName = hol[d.getFullYear()].get(k) || '';

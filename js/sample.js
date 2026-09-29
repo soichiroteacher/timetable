@@ -101,7 +101,6 @@ function makeSample(){
 //////////////////////// 見本の行事予定 ////////////////////////
 // 行事予定アプリのデータファイルと同じ形の、架空の1年分を作る(「週の時間割」を試すため)。
 // 見本を開いたときはこれを読み込んだ状態にする。「見本の行事予定を書き出す」で、ファイルとしても取り出せる。
-// 3月は①〜⑥を入れずにおく(まだ入力されていない週がどう見えるかを試せるように)。
 function makeSampleEventsFile(fy, s){
   const days = {};
   const periodsOf = wd => { const d = s.meta.days.find(x=>x.wd===wd); return d ? d.periods : 0; };
@@ -113,9 +112,9 @@ function makeSampleEventsFile(fy, s){
   const isWeekday = k => { const d = keyToDate(k), w = d.getDay(); return w>=1 && w<=5 && !hol[d.getFullYear()].get(k); };
   // n 番目の平日(from 以降)
   const nthWeekday = (from, n)=>{ let k = from, c = 0; for(;;){ if(isWeekday(k) && ++c===n) return k; k = addDays(k,1); } };
-  // ふだんの日は、基本時間割どおり(①〜⑥に 1〜6)。3月は入れない
+  // ふだんの日は、基本時間割どおり(①〜⑥に 1〜6)
   for(let k=fiscalStart(fy); k<=fiscalEnd(fy); k=addDays(k,1)){
-    if(isWeekday(k) && k < dkey(fy+1,3,1)) set(k, { periods:all(full(keyToDate(k).getDay())) });
+    if(isWeekday(k)) set(k, { periods:all(full(keyToDate(k).getDay())) });
   }
   // 長い休み
   off(dkey(fy,4,1), addDays(nthWeekday(dkey(fy,4,6),1), -1), '春休み');
