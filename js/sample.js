@@ -81,6 +81,18 @@ function makeSample(){
     ['1-6','3-6'].forEach(k=>[2,4,10].forEach(i=>{ if(!busyT[i].has(k)) base[s.teachers[i].id][k] = '企画'; }));
     s.base = base;
     s.events = convertEventsFile(makeSampleEventsFile(s.meta.fiscalYear, s), '見本の行事予定.json', s.meta.grades.map(g=>g.grade));
+    // 週ごとの変更の見本: 6月2週目の火曜、1年1組の2つの時間を入れ替える(出張で先生がいない時間との入れ替え、のつもり)。
+    // 入れ替えても先生が重ならない組み合わせを探す
+    let tue = dkey(s.meta.fiscalYear,6,8); while(keyToDate(tue).getDay()!==2) tue = addDays(tue,1);
+    const who = key=>s.teachers.find(t=>s.base[t.id][key]==='1-1');
+    const busy = (t, key)=>!!s.base[t.id][key];
+    swap: for(let i=1; i<=6; i++) for(let j=i+1; j<=6; j++){
+      const ti = who('2-'+i), tj = who('2-'+j);
+      if(!ti || !tj || ti===tj || busy(ti,'2-'+j) || busy(tj,'2-'+i)) continue;
+      const sh = t=>s.subjects.find(x=>x.name===t.subject).short;
+      s.changes = { [tue]: { '1-1': { [i-1]:sh(tj), [j-1]:sh(ti) } } };
+      break swap;
+    }
     return s;
   }
   throw new Error('見本の時間割を作れませんでした。');

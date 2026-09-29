@@ -25,6 +25,8 @@ const GUIDE_STEPS = [
     text:'「前の週」「次の週」や日付で、見る週を選びます。上の「学級の時間割」「教員の時間割」で表の向きを切り替えられます。'},
   { tab:'week', sel:'#wGrid', title:'週の時間割',
     text:'青いマスは、行事のために時間を入れ替えた授業です(マウスを乗せると、基本の何時間目の授業かが出ます)。緑は行事、灰色は休みです。同じ先生が同じ時間に2か所の授業に入ってしまうときは、オレンジ色になり、上に出ます。'},
+  { tab:'week', sel:'#wHowto', title:'この週だけ時間割を変える',
+    text:'出張などで授業を入れ替えるときは、「編集する」を押してから、学級の時間割のマスに教科(「数」「英」など)を入れます。先生は基本の時間割から自動で決まります。変えたマスは太い枠になり、表の下に一覧が出ます。Delete で元に戻ります。'},
   { tab:'settings', sel:'#tab-settings', title:'設定',
     text:'学級数、曜日ごとの時限の数、教科、編集のパスワードを決めます。「データを書き出す(バックアップ)」で、今の状態をファイルに控えておけます。' },
   { sel:'#btnHelp', title:'案内はいつでも見られます',
@@ -33,6 +35,7 @@ const GUIDE_STEPS = [
 let guideIdx = -1;
 function startGuide(){
   if(!state){ loadSample(); }
+  view.weekMode = 'class';   // 週の時間割の案内は、学級の時間割の表で説明するため
   guideIdx = 0; showGuideStep();
 }
 function endGuide(){ guideIdx = -1; $('guide').hidden = true; }

@@ -54,6 +54,8 @@ function emptyState(fy){
     base: {},       // { [teacherId]: { '1-3':'1-2', ... } }
     // 行事予定アプリから読み込んだ、日ごとの登校日・①〜⑥・行事(js/events.js の convertEventsFile)。読み込む前は null
     events: null,
+    // 週ごとの変更(出張などの入れ替え)。{ 'YYYY-MM-DD': { '1-2': { 2:'数' } } } 日付・学級・時限(0〜5=①〜⑥)ごとに、マスに入力した文字(js/week.js)
+    changes: {},
     editLock: { active:false, since:null, by:'' },
   };
 }
@@ -74,6 +76,7 @@ function normalizeState(o){
     s.events.fiscalYear = Number(s.events.fiscalYear) || s.meta.fiscalYear;
     if(!s.events.classCounts) s.events.classCounts = {};
   }
+  if(o.changes && typeof o.changes==='object') s.changes = o.changes;
   if(o.editLock) s.editLock = o.editLock;
   s.formatVersion = FORMAT_VERSION;
   return s;
@@ -305,11 +308,11 @@ async function confirmDiscard(){
 function editorName(){ try{ return localStorage.getItem('tt.editorName') || ''; }catch(e){ return ''; } }
 
 //////////////////////// 元に戻す(Ctrl+Z) ////////////////////////
-// 時間割の表の入力だけを戻せるようにする(設定の変更は対象外)。ページを開いている間だけ有効。
+// 時間割の表の入力(教員の時間割・週ごとの変更)だけを戻せるようにする(設定の変更は対象外)。ページを開いている間だけ有効。
 let undoStack = [], redoStack = [];
-function snapshot(){ return JSON.stringify({ teachers:state.teachers, base:state.base }); }
+function snapshot(){ return JSON.stringify({ teachers:state.teachers, base:state.base, changes:state.changes }); }
 function pushUndo(){ undoStack.push(snapshot()); if(undoStack.length>50) undoStack.shift(); redoStack = []; }
-function restoreSnap(s){ const o = JSON.parse(s); state.teachers = o.teachers; state.base = o.base; }
+function restoreSnap(s){ const o = JSON.parse(s); state.teachers = o.teachers; state.base = o.base; state.changes = o.changes || {}; }
 function doUndo(){ if(!editing || !undoStack.length) return; redoStack.push(snapshot()); restoreSnap(undoStack.pop()); markDirty(); renderAll(); }
 function doRedo(){ if(!editing || !redoStack.length) return; undoStack.push(snapshot()); restoreSnap(redoStack.pop()); markDirty(); renderAll(); }
 function resetUndo(){ undoStack = []; redoStack = []; }

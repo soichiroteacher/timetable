@@ -132,3 +132,4 @@ table.g-table{ border-collapse:separate; border-spacing:0; font-size:14px; table
 ul.week-events{ margin:0 0 10px; padding:6px 14px 6px 28px; background:var(--bg-soft); border-radius:8px; font-size:14px; }
 .info-box{ border:1px solid var(--line-strong); background:var(--bg-soft); border-radius:8px; padding:6px 14px; margin:0 0 12px; font-size:14px; }
 .info-box ul{ margin:0; padding-left:20px; }
+.g-table td.w-changed, .w-changed{ box-shadow:inset 0 0 0 2px #d9822b; font-weight:bold; }

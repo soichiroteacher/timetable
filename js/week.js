@@ -31,13 +31,14 @@ function weekDates(monday){
 //   byTeacher[teacherId][dateKey][p] = { text, title, cls }
 //   issues = [{ level, text }]
 function buildWeek(monday){
+  subjectTeacherCache = null;   // 基本時間割が変わっているかもしれないので、毎回作り直す
   const tt = buildTimetable();
   const dates = weekDates(monday);
   const slotKeys = new Set(tt.slots.map(s=>s.key));
   const hrTeacher = {};   // 学級 → 担任の先生
   state.teachers.forEach(t=>{ const h = homeroomOf(t); if(h && !hrTeacher[h]) hrTeacher[h] = t.id; });
   const tname = id=>{ const t = state.teachers.find(x=>x.id===id); return t ? teacherLabel(t) : ''; };
-  const issues = [], guessed = [];
+  const issues = [], guessed = [], changed = [];
   const byClass = {}, tAt = {};   // tAt[teacherId][dateKey][p] = [{ cid, origin, subject }]
   const put = (tid, k, p, x)=>{ ((tAt[tid] = tAt[tid] || {})[k] = tAt[tid][k] || [])[p] = (tAt[tid][k][p] || []).concat([x]); };
 
@@ -54,6 +55,7 @@ function buildWeek(monday){
       const blank = codes.every(x=>!x);
       if(blank && !guessed.includes(d.key)) guessed.push(d.key);
       for(let p=0; p<WEEK_PERIODS; p++){
+        const puts = [];   // この授業を受け持つ先生(変更があれば変更のほうを使う)
         let code = codes[p] || '';
         if(blank) code = slotKeys.has(d.wd+'-'+(p+1)) ? String(p+1) : '';
         const cell = { text:'', title:'', cls: blank ? 'w-guess' : '', teacherIds:[] };
@@ -70,14 +72,14 @@ function buildWeek(monday){
             cell.title = (code!==String(p+1) ? '基本の'+CONFIG.weekdays[d.wd]+'曜'+code+'時間目の授業\n' : '') + cell.teacherIds.map(tname).join('・');
             if(b.conflict) cell.cls += ' g-err';
             if(code!==String(p+1)) cell.cls += ' w-moved';
-            b.entries.forEach(e=>put(e.teacherId, d.key, p, { cid:c.id, origin:sk, subject:e.subject }));
+            b.entries.forEach(e=>puts.push([e.teacherId, { cid:c.id, origin:sk, subject:e.subject }]));
           }
         } else if(EVENT_CODE_SUBJECT[code]){
           const sub = EVENT_CODE_SUBJECT[code];
           cell.text = subjectShort(sub); cell.cls += ' k-hr w-moved';
           if(code!=='音' && hrTeacher[c.id]){
             cell.teacherIds = [hrTeacher[c.id]];
-            put(hrTeacher[c.id], d.key, p, { cid:c.id, origin:'hr:'+c.id, subject:sub });
+            puts.push([hrTeacher[c.id], { cid:c.id, origin:'hr:'+c.id, subject:sub }]);
           }
           cell.title = sub + (cell.teacherIds.length ? '\n'+tname(cell.teacherIds[0]) : '');
         } else if(code==='●'){
@@ -89,6 +91,21 @@ function buildWeek(monday){
         } else {
           cell.cls += ' w-none'; cell.title = '授業なし';
         }
+        // 週ごとの変更(出張などの入れ替え)。state.changes に書いてあれば、そちらを使う
+        const input = changeInput(d.key, c.id, p);
+        if(input!=null){
+          const ch = resolveChange(input, c, hrTeacher);
+          ch.cell.cls += ' w-changed';
+          ch.cell.title = '変更あり(元は「'+(cell.text || '授業なし')+'」)\n' + ch.cell.title;
+          ch.cell.title += ch.cell.teacherIds.length ? '\n'+ch.cell.teacherIds.map(tname).join('・') : '';
+          ch.cell.orig = cell.text;
+          if(ch.warn) issues.push({ level:'warn', text:mdLabel(d.key)+' '+c.label+'の'+CIRCLED[p]+'「'+input+'」: '+ch.warn });
+          changed.push({ date:d.key, cls:c, p, from:cell.text, to:ch.cell.text });
+          row.push(ch.cell);
+          ch.puts.forEach(([tid, x])=>put(tid, d.key, p, x));
+          continue;
+        }
+        puts.forEach(([tid, x])=>put(tid, d.key, p, x));
         row.push(cell);
       }
     });
@@ -131,7 +148,7 @@ function buildWeek(monday){
     });
   });
   if(guessed.length) issues.push({ level:'info', text:'行事予定の①〜⑥が入っていない日('+guessed.map(mdLabel).join('、')+')は、基本時間割どおりとして表示しています(斜めの線のマス)。' });
-  return { dates, classes:tt.classes, byClass, byTeacher, issues };
+  return { dates, classes:tt.classes, byClass, byTeacher, issues, changed };
 }
 
 // はじめに表示する週(今日が年度の中なら今週、そうでなければ年度のはじめの週)
@@ -181,12 +198,20 @@ TABS.week = {
       + '</span>'
       + (mode==='class' ? '<span class="seg" id="wGradeSeg"><button data-g="0"'+(view.classGrade===0?' class="active"':'')+'>全学年</button>'
           + grades.map(g=>'<button data-g="'+g+'"'+(view.classGrade===g?' class="active"':'')+'>'+g+'年</button>').join('')+'</span>' : '')
-      + '<span class="legend"><span class="lg w-moved">入れ替えた時間</span><span class="lg w-event">行事</span><span class="lg w-off">休み</span><span class="lg w-guess">①〜⑥が未入力</span><span class="lg g-err">重なり</span></span>'
+      + '<span class="legend"><span class="lg w-moved">入れ替えた時間</span><span class="lg w-event">行事</span><span class="lg w-off">休み</span><span class="lg w-guess">①〜⑥が未入力</span><span class="lg w-changed">週ごとの変更</span><span class="lg g-err">重なり</span></span>'
+      + (mode==='class' ? '<span class="sep-v"></span><button class="edit-act" data-act="undo" title="Ctrl+Z">↶ 元に戻す</button><button class="edit-act" data-act="redo" title="Ctrl+Y">↷ やり直す</button>' : '')
       + '</div>'
       + weekEventsHtml(w)
       + weekIssuesHtml(w)
+      + (mode==='class' ? '<details class="howto" id="wHowto"><summary>この週だけ時間割を変えるには(出張などの入れ替え)</summary><ul>'
+        + '<li>「✏ 編集する」を押してから、学級の時間割のマスをクリックして、教科を入れます(「数」「数学」「英」など。Excel のようにコピー・貼り付けもできます)。受け持つ先生は、基本の時間割から自動で決まります。</li>'
+        + '<li>「学活」「道徳」「総合」は担任の先生の授業になります。授業をなくすときは「なし」、行事は「行」と入れます。</li>'
+        + '<li>変えたマスは太い枠で表示され、表の下の「この週の変更」に一覧が出ます。Delete で消すと、元(行事予定と基本の時間割どおり)に戻ります。</li>'
+        + '<li>入れ替えで同じ先生が同じ時間に2か所の授業に入ってしまうと、オレンジ色になり、上に出ます。「教員の時間割」に切り替えると、先生ごとに確かめられます。</li>'
+        + '</ul></details>' : '')
       + '<div id="wGrid"></div>'
-      + '<p class="hint">マスにマウスを乗せると、授業をする先生や、基本の何時間目の授業かが出ます。直すときは、行事予定アプリの①〜⑥か、「教員の時間割」を直してから、もう一度読み込んでください(週ごとの入れ替えは、これから作ります)。</p>';
+      + weekChangesHtml(w)
+      + '<p class="hint">マスにマウスを乗せると、授業をする先生や、基本の何時間目の授業かが出ます。行事による時間のずれは、行事予定アプリの①〜⑥を直してから、もう一度読み込んでください。</p>';
     el.querySelectorAll('#wModeSeg button').forEach(b=>b.addEventListener('click', ()=>{ view.weekMode = b.dataset.m; savePref(); renderAll(); }));
     el.querySelectorAll('#wGradeSeg button').forEach(b=>b.addEventListener('click', ()=>{ view.classGrade = Number(b.dataset.g); savePref(); renderAll(); }));
     $('wDate').addEventListener('change', e=>{ if(e.target.value){ view.week = mondayOf(e.target.value); savePref(); renderAll(); } });
@@ -199,7 +224,7 @@ TABS.week = {
       else for(let p=0; p<WEEK_PERIODS; p++) cols.push({ label:CIRCLED[p], group:g, first:p===0, width:'2.9em', date:d.key, p });
     });
     const rows = mode==='class' ? w.classes.filter(c=>!view.classGrade || c.grade===view.classGrade) : state.teachers;
-    createGrid({
+    weekGrid = createGrid({
       wrap: $('wGrid'), cols, rows: rows.length,
       cell(r, c){
         const x = rows[r];
@@ -208,10 +233,41 @@ TABS.week = {
         const cell = (mode==='class' ? w.byClass[x.id] : w.byTeacher[x.id])[col.date][col.p];
         return { text:cell.text, cls:cell.cls, title:cell.title };
       },
-      commit(){}, editable: ()=>false,
+      commit(list){
+        if(mode!=='class') return;
+        let n = 0;
+        list.forEach(({ r, c, val })=>{
+          const x = rows[r], col = cols[c];
+          if(c===0 || !x || !col.date) return;
+          const d = w.dates.find(y=>y.key===col.date);
+          if(!d || !d.ev || !d.ev.school || !d.ev.school[x.grade]) return;   // その学年が休みの日は変えられない
+          const v = String(val==null?'':val).normalize('NFKC').trim();
+          const cur = w.byClass[x.id][col.date][col.p];
+          if(!n++) pushUndo();
+          // 元と同じ文字を入れたときは、変更を消す(元に戻す)
+          const orig = cur.orig!==undefined ? cur.orig : cur.text;
+          setChange(col.date, x.id, col.p, v && v!==orig ? v : '');
+        });
+        if(!n) return;
+        const s = weekGrid.sel; weekSel = { r:s.fr, c:s.fc };
+        markDirty(); renderAll();
+      },
+      editable: ()=>editing && mode==='class',
+      listFor: c => c>0 ? 'changeList' : '',
+      onSelect(r, c){ weekSel = { r, c }; },
     });
+    $('changeList').innerHTML = [...state.subjects.map(s=>s.short), ...Object.values(CONFIG.mergeSubjects), '学活', '道徳', '総合', 'なし', '行']
+      .map(v=>'<option value="'+esc(v)+'">').join('');
+    if(weekSel.r < rows.length && weekSel.c < cols.length) weekGrid.select(weekSel.r, weekSel.c);
   }
 };
+let weekGrid = null, weekSel = { r:0, c:1 };
+function weekChangesHtml(w){
+  if(!w.changed.length) return '';
+  return '<h3>この週の変更('+w.changed.length+'か所)</h3><table class="grid counts"><thead><tr><th>日</th><th>学級</th><th>時間</th><th>元</th><th>変更後</th></tr></thead><tbody>'
+    + w.changed.map(x=>'<tr><td>'+mdLabel(x.date)+'</td><td>'+esc(x.cls.label)+'</td><td class="c">'+CIRCLED[x.p]+'</td><td class="c">'+esc(x.from||'(なし)')+'</td><td class="c"><b>'+esc(x.to||'(なし)')+'</b></td></tr>').join('')
+    + '</tbody></table>';
+}
 function weekEventsHtml(w){
   const items = w.dates.filter(d=>d.ev && (d.ev.text || d.ev.hol)).map(d=>'<li><b>'+mdLabel(d.key)+'</b> '+esc([d.ev.hol, d.ev.text].filter(Boolean).join('　'))+'</li>');
   return items.length ? '<ul class="week-events">'+items.join('')+'</ul>' : '';
@@ -229,3 +285,66 @@ function fmtDateTime(iso){
 }
 ACTIONS.weekMove = el=>{ view.week = addDays(view.week, Number(el.dataset.d)); savePref(); renderAll(); };
 ACTIONS.weekToday = ()=>{ view.week = mondayOf(todayYmd()); savePref(); renderAll(); };
+
+//////////////////////// 週ごとの変更(出張などの入れ替え) ////////////////////////
+// state.changes[日付][学級][p(0〜5)] = マスに入力した文字。行事予定と基本時間割から自動でできる授業の代わりに、これを使う。
+// 入力した文字のまま覚えておき、表示するたびに読み直す(あとで基本時間割を直しても、担当の先生が正しく付くように)。
+//   教科(「数」「数学」「英」など)… その学級でその教科を受け持っている先生(基本時間割から探す)の授業
+//   「道徳」「学活」「総合」(「道」「学」「総」) … 担任の先生の授業
+//   「技家」 … 技術と家庭
+//   「なし」「×」 … 授業なし / 「行」 … 行事 / そのほかの文字 … 授業ではない予定として、そのまま表示する
+const CHANGE_NONE = ['なし', '×', '-'];
+function changeInput(dateKey, cid, p){
+  const d = state.changes && state.changes[dateKey], c = d && d[cid];
+  return c && c[p]!=null && c[p]!=='' ? c[p] : null;
+}
+function setChange(dateKey, cid, p, v){
+  if(v==null || v===''){
+    const d = state.changes[dateKey]; if(!d || !d[cid]) return;
+    delete d[cid][p];
+    if(!Object.keys(d[cid]).length) delete d[cid];
+    if(!Object.keys(d).length) delete state.changes[dateKey];
+    return;
+  }
+  ((state.changes[dateKey] = state.changes[dateKey] || {})[cid] = state.changes[dateKey][cid] || {})[p] = v;
+}
+// その学級で、その教科を受け持っている先生(基本時間割から探す)
+let subjectTeacherCache = null;
+function subjectTeachers(cid, subject){
+  if(!subjectTeacherCache){
+    subjectTeacherCache = {};
+    const tt = buildTimetable();
+    tt.classes.forEach(c=>tt.slots.forEach(s=>tt.byClass[c.id][s.key].entries.forEach(e=>{
+      const k = c.id+'|'+e.subject, list = subjectTeacherCache[k] = subjectTeacherCache[k] || [];
+      if(!list.includes(e.teacherId)) list.push(e.teacherId);
+    })));
+  }
+  return subjectTeacherCache[cid+'|'+subject] || [];
+}
+// 入力した文字を、表示するマスと受け持つ先生に読み替える
+function resolveChange(input, c, hrTeacher){
+  const s = String(input).normalize('NFKC').trim();
+  const cell = { text:s, title:'', cls:'', teacherIds:[] }, puts = [];
+  let warn = '';
+  if(CHANGE_NONE.includes(s)){ cell.text = ''; cell.cls = 'w-none'; cell.title = '授業なし'; return { cell, puts }; }
+  if(s==='行'){ cell.cls = 'w-event'; cell.title = '行事'; return { cell, puts }; }
+  if(CONFIG.homeroomSubjects[s]){
+    const sub = CONFIG.homeroomSubjects[s];
+    cell.text = subjectShort(sub); cell.cls = 'k-hr'; cell.title = sub;
+    if(hrTeacher[c.id]){ cell.teacherIds = [hrTeacher[c.id]]; puts.push([hrTeacher[c.id], { cid:c.id, origin:'hr:'+c.id, subject:sub }]); }
+    else warn = c.label+'の担任の先生が「教員の時間割」の担当の欄にありません。';
+    return { cell, puts, warn };
+  }
+  // 技術と家庭のように、2つの教科を1コマで受けるもの
+  const mergedKey = Object.keys(CONFIG.mergeSubjects).find(k=>CONFIG.mergeSubjects[k]===s);
+  const subs = mergedKey ? mergedKey.split('|') : [subjectFromInput(s)];
+  if(!subs.every(x=>state.subjects.some(y=>y.name===x))){ cell.cls = 'w-none'; cell.title = '授業ではない予定('+s+')'; return { cell, puts }; }
+  cell.text = mergedKey ? s : subjectShort(subs[0]);
+  cell.title = subs.join('・');
+  subs.forEach(sub=>{
+    const ts = subjectTeachers(c.id, sub);
+    if(!ts.length) warn = c.label+'で'+sub+'を受け持つ先生が、基本の時間割に見つかりません(先生なしで表示しています)。';
+    ts.forEach(tid=>{ if(!cell.teacherIds.includes(tid)) cell.teacherIds.push(tid); puts.push([tid, { cid:c.id, origin:'chg:'+sub, subject:sub }]); });
+  });
+  return { cell, puts, warn };
+}
