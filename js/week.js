@@ -175,7 +175,7 @@ TABS.week = {
     if(!view.week || !/^\d{4}-\d{2}-\d{2}$/.test(view.week)) view.week = defaultWeek();
     view.week = mondayOf(view.week);
     const head =
-      '<div class="toolbar"><h2>週時間割</h2><span class="hint">行事予定の①〜⑥と、基本の時間割(「基本時間割(教員)」)から、週ごとの時間割を作ります。</span></div>'
+      '<div class="toolbar"><h2>週時間割</h2><span class="hint">行事予定の①〜⑥と、基本の時間割(「基本時間割」の「教員」)から、週ごとの時間割を作ります。</span></div>'
       + '<div class="toolbar">'
       + '<button class="edit-act" data-act="importEvents">📥 行事予定を読み込む</button>'
       + (isSample ? '<button data-act="exportSampleEvents" title="行事予定アプリのデータファイルと同じ形の、見本のファイルを作ります">📤 見本の行事予定を書き出す</button>' : '')
@@ -340,7 +340,7 @@ function resolveChange(input, c, hrTeacher){
     const sub = CONFIG.homeroomSubjects[s];
     cell.text = subjectShort(sub); cell.cls = 'k-hr'; cell.title = sub; cell.subs = [sub]; cell.kind = 'lesson';
     if(hrTeacher[c.id]){ cell.teacherIds = [hrTeacher[c.id]]; puts.push([hrTeacher[c.id], { cid:c.id, origin:'hr:'+c.id, subject:sub }]); }
-    else warn = c.label+'の担任の先生が「基本時間割(教員)」の担当の欄にありません。';
+    else warn = c.label+'の担任の先生が「基本時間割」の「教員」の担当の欄にありません。';
     return { cell, puts, warn };
   }
   // 技術と家庭のように、2つの教科を1コマで受けるもの

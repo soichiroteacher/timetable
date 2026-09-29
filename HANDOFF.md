@@ -23,7 +23,7 @@
 - **ユーザーと決めたこと(2026-09-30、第2・第4段階)**
   - 登校日なのに①〜⑥がすべて空欄の日は、授業なし(基本時間割を入れない)。行事予定アプリの実績タブと同じ。週の時間割と時数のタブにお知らせを出す。
   - 基本時間割にない曜日・時限の番号(土曜授業の「1」、5時限の金曜の「6」)は、マスを空けて警告を出す(日ごとにまとめて1件)。時数にも数えない。
-  - 画面(タブ)の名前は「基本時間割(教員)」「基本時間割(生徒)」「週時間割」「時数」「設定」。週時間割の表の切り替えは「教員」「生徒」。コードの中の名前(`TABS.teacher`・`TABS.classes`・`view.weekMode` の `class` など)は変えていない。
+  - 画面(タブ)は「基本時間割」「週時間割」「時数」「設定」の4つ。基本時間割と週時間割は、中のボタンで「教員」「生徒」を切り替える(`view.baseMode`・`view.weekMode`)。基本時間割は `TABS.base` が `TABS.teacher`(教員)・`TABS.classes`(生徒)を呼ぶ形。以前の `view.tab` の `teacher`・`classes` は起動時に `base` に読み替える。
 - **まだ確かめていないこと**
   - 「音」(学年の合唱練習など)は学級の音楽として数えるが、受け持つ先生は決めていない(教員の時間割には出ない)。
   - 行事予定の①〜⑥は6時限まで。基本時間割で7時限目以上がある曜日は、週の時間割に出ない。
@@ -55,7 +55,7 @@
 | `js/grid.js` | Excel のような表(`createGrid`)。行事予定アプリの実績タブの `createActGrid` がもと。選択・範囲選択・コピー/貼り付け・キー操作・日本語入力に対応 |
 | `js/io.js` | Excel の読み込み(`readXlsx`: ブラウザの `DecompressionStream` で zip を開いて XML を読む。`parseTimetableRows`: 「担当」の形を読む)と書き出し(`ACTIONS.exportXlsx`) |
 | `js/xlsx.js` | Excel の書き出しの土台。exam-manager の js/xlsx.js をそのまま写したもの |
-| `js/base.js` | 「基本時間割(教員)」タブ(入力)と「基本時間割(生徒)」タブ(自動) |
+| `js/base.js` | 「基本時間割」タブ(`TABS.base`)。「教員」(入力。`TABS.teacher`)と「生徒」(自動。`TABS.classes`)の切り替え |
 | `js/events.js` | 行事予定アプリのデータファイルの読み込み(`convertEventsFile`・`ACTIONS.importEvents`)。祝日・登校日の判定は行事予定アプリの `computeNationalHolidays`・`getDayStatus`・`isSchoolDay` を移したもの(**行事予定側の判定を変えたら、ここも直す**)。日付の道具(`dkey`・`addDays`・`mondayOf` など) |
 | `js/week.js` | 「週時間割」タブ。`buildWeek(月曜の日付)` で週の学級・教員の時間割と確認(先生の重なり)を作る。①〜⑥の読み方はファイル先頭のコメント。週ごとの変更(`state.changes`)の読み替え(`resolveChange`: 教科→その学級でその教科を受け持つ先生、学活など→担任、「なし」「行」)と、表のマスへの入力(`commit`) |
 | `js/hours.js` | 「時数」タブ。`tallyHours(基準日)` で年度全体を数える。必要時数との比べ(`requiredHoursOf`)と表 |

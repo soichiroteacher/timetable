@@ -6,18 +6,20 @@ const GUIDE_STEPS = [
   { sel:'header.top', title:'上の帯',
     text:'今開いているデータの年度と学校名が出ます。見本を開いているときは「見本・保存されません」と出ます。右側に「編集する」「保存」「開く」「新規作成」のボタンがあります。' },
   { sel:'nav.tabs', title:'画面の切り替え',
-    text:'「基本時間割(教員)」「基本時間割(生徒)」「週時間割」「時数」「設定」の5つの画面があります。ここを押して切り替えます。' },
-  { tab:'teacher', sel:'#tGrid', title:'基本時間割(教員)(ここに入力します)',
+    text:'「基本時間割」「週時間割」「時数」「設定」の4つの画面があります。ここを押して切り替えます。' },
+  { tab:'base', mode:'teacher', sel:'#baseSeg', title:'「教員」と「生徒」の切り替え',
+    text:'基本時間割の画面では、ここで「教員」(先生ごとの時間割。ここに入力します)と「生徒」(学級ごとの時間割。自動でできます)を切り替えます。'},
+  { tab:'base', mode:'teacher', sel:'#tGrid', title:'基本時間割の「教員」(ここに入力します)',
     text:'縦が先生、横が曜日と時限です。マスには、その時間に授業をする学級を「1-2」(1年2組)のように入れます。担任の先生の行に「道徳」「学活」「総合」と書くと、その先生の学級の授業になります。' },
   { sel:'#btnEdit', title:'直すときは「編集する」',
     text:'はじめは見るだけの状態です。直すときはここを押して、名前を入れてから始めます。終わったら同じボタン(「編集を終える」になります)を押すと保存されます。見本でも入力を試せます(見本は保存されません)。' },
-  { tab:'teacher', sel:'#tIssues', title:'確認が必要なところ',
+  { tab:'base', mode:'teacher', sel:'#tIssues', title:'確認が必要なところ',
     text:'同じ学級の同じ時間に違う教科が重なっていたり、授業の入っていないコマがあったりすると、ここに出ます。表の中の、関係するマスにも色が付きます。' },
-  { tab:'teacher', sel:'[data-act="importXlsx"]', title:'Excel から読み込む',
+  { tab:'base', mode:'teacher', sel:'[data-act="importXlsx"]', title:'Excel から読み込む',
     text:'今お使いの時間割の Excel(A列に「担当」の見出しがある形)から、先生と時間割をまとめて取り込めます。試すときは、となりの「Excel に書き出す」で見本の Excel を作り、それを読み込んでみてください。' },
-  { tab:'classes', sel:'#cGrid', title:'基本時間割(生徒)(自動でできます)',
-    text:'基本時間割(教員)から、学級ごとの時間割が自動でできます。マスにマウスを乗せると、授業をする先生の名前が出ます。直すときは「基本時間割(教員)」で直します。' },
-  { tab:'classes', sel:'#cCounts', title:'1週間のコマ数',
+  { tab:'base', mode:'class', sel:'#cGrid', title:'基本時間割の「生徒」(自動でできます)',
+    text:'「教員」の表から、学級ごとの時間割が自動でできます。マスにマウスを乗せると、授業をする先生の名前が出ます。直すときは「基本時間割」の「教員」で直します。' },
+  { tab:'base', mode:'class', sel:'#cCounts', title:'1週間のコマ数',
     text:'学級ごとに、教科ごとの1週間のコマ数を数えています。合計が1週間の時限の数より少ないときは、授業の入っていないコマがあります。' },
   { tab:'week', sel:'[data-act="importEvents"]', title:'週時間割: 行事予定を読み込む',
     text:'行事予定アプリのデータファイルを読み込むと、その①〜⑥に合わせて週ごとの時間割ができます(行事予定のファイルは書き換えません)。見本では、見本の行事予定を読み込んだ状態になっています。'},
@@ -44,7 +46,7 @@ function endGuide(){ guideIdx = -1; $('guide').hidden = true; }
 function showGuideStep(){
   const st = GUIDE_STEPS[guideIdx];
   if(!st){ endGuide(); return; }
-  if(st.tab && view.tab!==st.tab){ view.tab = st.tab; savePref(); renderAll(); }
+  if(st.tab && (view.tab!==st.tab || (st.mode && view.baseMode!==st.mode))){ view.tab = st.tab; if(st.mode) view.baseMode = st.mode; savePref(); renderAll(); }
   const el = document.querySelector(st.sel);
   $('guide').hidden = false;
   $('gTitle').textContent = (guideIdx+1)+' / '+GUIDE_STEPS.length+'　'+st.title;

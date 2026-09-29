@@ -12,7 +12,7 @@ document.addEventListener('keydown', e=>{
 function loadSample(){
   state = makeSample(); fileHandle = null; isSample = true; editing = false; dirty = false;
   resetUndo();
-  if(!TABS[view.tab]) view.tab = 'teacher';
+  if(!TABS[view.tab] || !document.querySelector('nav.tabs [data-tab="'+view.tab+'"]')) view.tab = 'base';
   renderAll();
   setStatus('見本を表示しています(「編集する」で入力も試せます。保存はされません)', 'saved');
 }
@@ -21,7 +21,7 @@ $('bnGuide').addEventListener('click', startGuide);
 $('btnHelp').addEventListener('click', startGuide);
 
 async function boot(){
-  if(!TABS[view.tab]) view.tab = 'teacher';
+  if(!TABS[view.tab] || !document.querySelector('nav.tabs [data-tab="'+view.tab+'"]')) view.tab = 'base';
   renderAll();
   if(!supportsFSA){
     $('bnLast').hidden = false;

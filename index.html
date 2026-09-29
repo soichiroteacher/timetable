@@ -32,8 +32,7 @@
 </header>
 
 <nav class="tabs">
-  <button data-tab="teacher">基本時間割(教員)</button>
-  <button data-tab="classes">基本時間割(生徒)</button>
+  <button data-tab="base">基本時間割</button>
   <button data-tab="week">週時間割</button>
   <button data-tab="hours">時数</button>
   <button data-tab="settings">設定</button>
@@ -53,8 +52,12 @@
     <div id="bnLast" style="margin-top:12px" hidden></div>
   </div>
   <!-- 各タブの中身は js で組み立てる -->
-  <section id="tab-teacher" hidden></section>
-  <section id="tab-classes" hidden></section>
+  <section id="tab-base" hidden>
+    <!-- 「教員」「生徒」の切り替えボタンと、それぞれの中身(js/base.js) -->
+    <div class="toolbar"><h2>基本時間割</h2><span class="seg" id="baseSeg"><button data-m="teacher">教員</button><button data-m="class">生徒</button></span></div>
+    <div id="tab-teacher" hidden></div>
+    <div id="tab-classes" hidden></div>
+  </section>
   <section id="tab-week" hidden></section>
   <section id="tab-hours" hidden></section>
   <section id="tab-settings" hidden></section>

@@ -14,7 +14,9 @@ const supportsFSA = 'showOpenFilePicker' in window;
 
 // 画面の見方の好み(人ごと。ブラウザに覚えておくだけで、データファイルには入れない)
 const PREF_KEY = 'tt.view';
-const view = loadPref(PREF_KEY, { tab:'teacher', classGrade:0 });
+const view = loadPref(PREF_KEY, { tab:'base', baseMode:'teacher', classGrade:0 });
+// 以前の画面の名前(教員の時間割・学級の時間割のタブ)を覚えていたときは、今の「基本時間割」タブに読み替える
+if(view.tab==='teacher' || view.tab==='classes'){ view.baseMode = view.tab==='classes' ? 'class' : 'teacher'; view.tab = 'base'; }
 function loadPref(key, def){
   try{ const v = JSON.parse(localStorage.getItem(key)); return (v && typeof v==='object') ? Object.assign({}, def, v) : def; }catch(e){ return def; }
 }
@@ -418,5 +420,5 @@ $('nOk').addEventListener('click', async ()=>{
   lastLockStamp = Date.now();
   view.tab = 'settings'; savePref();
   renderAll();
-  alert('作りました。はじめに「設定」で学級数・時限数と先生を入れてください。\n今お使いの時間割の Excel があれば、「基本時間割(教員)」タブの「Excel から読み込む」で先生と時間割をまとめて取り込めます。');
+  alert('作りました。はじめに「設定」で学級数・時限数と先生を入れてください。\n今お使いの時間割の Excel があれば、「基本時間割」の「教員」タブの「Excel から読み込む」で先生と時間割をまとめて取り込めます。');
 });
