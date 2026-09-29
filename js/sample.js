@@ -80,7 +80,72 @@ function makeSample(){
     // 会議の印も少し入れておく(学級の時間割には出ない)
     ['1-6','3-6'].forEach(k=>[2,4,10].forEach(i=>{ if(!busyT[i].has(k)) base[s.teachers[i].id][k] = '企画'; }));
     s.base = base;
+    s.events = convertEventsFile(makeSampleEventsFile(s.meta.fiscalYear, s), '見本の行事予定.json', s.meta.grades.map(g=>g.grade));
     return s;
   }
   throw new Error('見本の時間割を作れませんでした。');
 }
+
+//////////////////////// 見本の行事予定 ////////////////////////
+// 行事予定アプリのデータファイルと同じ形の、架空の1年分を作る(「週の時間割」を試すため)。
+// 見本を開いたときはこれを読み込んだ状態にする。「見本の行事予定を書き出す」で、ファイルとしても取り出せる。
+// 3月は①〜⑥を入れずにおく(まだ入力されていない週がどう見えるかを試せるように)。
+function makeSampleEventsFile(fy, s){
+  const days = {};
+  const periodsOf = wd => { const d = s.meta.days.find(x=>x.wd===wd); return d ? d.periods : 0; };
+  const full = wd => Array.from({length:6}, (_, i)=> i < periodsOf(wd) ? String(i+1) : '');
+  const all = arr => ({ g1:arr.slice(), g2:arr.slice(), g3:arr.slice() });
+  const set = (k, rec)=>{ days[k] = Object.assign(days[k] || {}, rec); };
+  const off = (from, to, label)=>{ for(let k=from; k<=to; k=addDays(k,1)) set(k, { schoolDay:{ g1:false, g2:false, g3:false } }); if(label) set(from, { eventsAnnual:label }); };
+  const hol = { [fy]:computeNationalHolidays(fy), [fy+1]:computeNationalHolidays(fy+1) };
+  const isWeekday = k => { const d = keyToDate(k), w = d.getDay(); return w>=1 && w<=5 && !hol[d.getFullYear()].get(k); };
+  // n 番目の平日(from 以降)
+  const nthWeekday = (from, n)=>{ let k = from, c = 0; for(;;){ if(isWeekday(k) && ++c===n) return k; k = addDays(k,1); } };
+  // ふだんの日は、基本時間割どおり(①〜⑥に 1〜6)。3月は入れない
+  for(let k=fiscalStart(fy); k<=fiscalEnd(fy); k=addDays(k,1)){
+    if(isWeekday(k) && k < dkey(fy+1,3,1)) set(k, { periods:all(full(keyToDate(k).getDay())) });
+  }
+  // 長い休み
+  off(dkey(fy,4,1), addDays(nthWeekday(dkey(fy,4,6),1), -1), '春休み');
+  off(dkey(fy,7,21), dkey(fy,8,31), '夏休み');
+  off(dkey(fy,12,26), dkey(fy+1,1,7), '冬休み');
+  off(dkey(fy+1,3,25), dkey(fy+1,3,31), '春休み');
+  const start1 = nthWeekday(dkey(fy,4,6), 1);
+  set(start1, { eventsAnnual:'始業式・着任式', periods:all(['学','学','1','2','','']) });
+  const nyu = nthWeekday(start1, 2);
+  set(nyu, { eventsAnnual:'入学式', periods:{ g1:['行','行','','','',''], g2:['●','●','行','','',''], g3:['●','●','行','','',''] } });
+  set(nthWeekday(start1, 4), { eventsMonthly:'身体測定', periods:all(['1','2','3','4','行','行']) });
+  set(nthWeekday(start1, 8), { eventsMonthly:'授業参観・学級懇談会', periods:all(['1','2','3','4','5','学']) });
+  // 体育祭(土曜に登校し、次の月曜を振替休業にする)
+  let sat = dkey(fy,5,16); while(keyToDate(sat).getDay()!==6) sat = addDays(sat,1);
+  set(addDays(sat,-1), { eventsMonthly:'体育祭予行', periods:all(['1','2','3','4','行','行']) });
+  set(sat, { eventsAnnual:'体育祭', schoolDay:{ g1:true, g2:true, g3:true }, periods:all(['行','行','行','行','行','行']) });
+  set(addDays(sat,2), { eventsAnnual:'振替休業日', schoolDay:{ g1:false, g2:false, g3:false } });
+  // 3年だけ時間をずらす日(5時間目に6時間目の授業。ほかの学年と先生が重ならないかの確認の見本)
+  const shin = nthWeekday(dkey(fy,6,1), 3), shinFull = full(keyToDate(shin).getDay());
+  set(shin, { eventsMonthly:'進路説明会(3年)', periods:{ g1:shinFull, g2:shinFull, g3:shinFull[5] ? ['1','2','3','4','6','行'] : ['1','2','3','5','行','行'] } });
+  const exam = nthWeekday(dkey(fy,6,24), 1);
+  set(exam, { eventsAnnual:'期末テスト(1日目)', periods:all(['行','行','行','','','']) });
+  set(nthWeekday(exam,2), { eventsAnnual:'期末テスト(2日目)', periods:all(['行','行','行','','','']) });
+  set(addDays(dkey(fy,7,21),-1), { eventsAnnual:'1学期終業式', periods:all(['学','学','行','','','']) });
+  set(nthWeekday(dkey(fy,9,1),1), { eventsAnnual:'2学期始業式', periods:all(['学','学','1','2','','']) });
+  // 修学旅行(3年・3日間)
+  const trip = nthWeekday(dkey(fy,10,14), 1);
+  for(let i=0, k=trip; i<3; k=addDays(k,1)){ if(!isWeekday(k)) continue; set(k, { eventsAnnual: i===0 ? '修学旅行(3年)' : '', periods:{ g1:full(keyToDate(k).getDay()), g2:full(keyToDate(k).getDay()), g3:['行','行','行','行','行','行'] } }); i++; }
+  set(nthWeekday(dkey(fy,11,4),1), { eventsAnnual:'合唱コンクール', periods:all(['音','音','行','行','','']) });
+  const hinan = nthWeekday(dkey(fy,11,10),1);
+  set(hinan, { eventsMonthly:'避難訓練', periods:all(full(keyToDate(hinan).getDay()).map((v,i)=>i===4 ? '学' : v)) });
+  set(addDays(dkey(fy,12,26),-1), { eventsAnnual:'2学期終業式', periods:all(['学','学','行','','','']) });
+  set(nthWeekday(dkey(fy+1,1,8),1), { eventsAnnual:'3学期始業式', periods:all(['学','学','1','2','','']) });
+  set(nthWeekday(dkey(fy+1,2,1),5), { eventsMonthly:'道徳の授業公開', periods:all(['1','2','3','4','道','']) });
+  return {
+    formatVersion:7,
+    meta:{ schoolName:'見本中学校', fiscalYear:fy },
+    holidayOverrides:{},
+    classCounts:{ g1:3, g2:3, g3:3 },
+    days,
+  };
+}
+ACTIONS.exportSampleEvents = ()=>{
+  downloadText(JSON.stringify(makeSampleEventsFile(state.meta.fiscalYear, state), null, 2), '見本の行事予定_'+state.meta.fiscalYear+'年度.json');
+};

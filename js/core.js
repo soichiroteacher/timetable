@@ -52,6 +52,8 @@ function emptyState(fy){
     // 基本時間割(教員ごと)。キーは「曜日-時限」(例 '1-3' = 月曜3時間目)、値はそのコマに書く文字
     // (学級 '1-2'、2学級合同 '3-12'、担任の行の '道徳' '総/学'、会議などの印 '企画' '×' など)
     base: {},       // { [teacherId]: { '1-3':'1-2', ... } }
+    // 行事予定アプリから読み込んだ、日ごとの登校日・①〜⑥・行事(js/events.js の convertEventsFile)。読み込む前は null
+    events: null,
     editLock: { active:false, since:null, by:'' },
   };
 }
@@ -67,6 +69,11 @@ function normalizeState(o){
   if(Array.isArray(o.teachers)) s.teachers = o.teachers.filter(Boolean).map(t=>({ id:t.id||newId('t'), role:String(t.role||''), subject:String(t.subject||''), name:String(t.name||'') }));
   if(o.base && typeof o.base==='object') s.base = o.base;
   s.teachers.forEach(t=>{ if(!s.base[t.id] || typeof s.base[t.id]!=='object') s.base[t.id] = {}; });
+  if(o.events && typeof o.events==='object' && o.events.days && typeof o.events.days==='object'){
+    s.events = o.events;
+    s.events.fiscalYear = Number(s.events.fiscalYear) || s.meta.fiscalYear;
+    if(!s.events.classCounts) s.events.classCounts = {};
+  }
   if(o.editLock) s.editLock = o.editLock;
   s.formatVersion = FORMAT_VERSION;
   return s;

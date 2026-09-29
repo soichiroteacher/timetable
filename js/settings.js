@@ -20,7 +20,7 @@ TABS.settings = {
       + m.grades.map((g,i)=>'<label>'+g.grade+'年 <input type="number" min="0" max="12" data-path="meta.grades.'+i+'.classes" data-type="num" value="'+g.classes+'" style="width:64px"'+d+'> 学級</label>').join('　')
       + '</div><p class="hint">特別支援学級は、今は数えていません(必要になったら相談してください)。</p></section>'
       + '<section><h2>1週間の時限(基本時間割)</h2><div class="row">'+[1,2,3,4,5,6].map(dayRow).join('')+'</div>'
-      + '<p class="hint">時限を減らしても、入力した時間割は消えません(表に出なくなるだけです。元に戻すとまた出ます)。行事などで短くなる日は、週ごとの時間割で扱います(これから作る機能)。</p></section>'
+      + '<p class="hint">時限を減らしても、入力した時間割は消えません(表に出なくなるだけです。元に戻すとまた出ます)。行事などで時間がずれる日は、「週の時間割」で行事予定の①〜⑥に合わせて表示します。</p></section>'
       + '<section><h2>教科</h2><p class="hint">「短い名前」は、学級の時間割の表に出る名前です。教員の時間割の「教科」の欄には、名前か短い名前のどちらを入れてもかまいません。</p>'
       + '<table class="grid"><thead><tr><th>名前</th><th>短い名前</th><th></th></tr></thead><tbody>'
       + state.subjects.map((s,i)=>'<tr><td><input type="text" data-path="subjects.'+i+'.name" value="'+esc(s.name)+'" style="width:160px"'+d+'></td>'
