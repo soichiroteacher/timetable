@@ -45,6 +45,8 @@ function emptyState(fy){
       schoolName: '', fiscalYear: fy,
       grades: clone(CONFIG.defaultGrades),   // [{ grade:1, classes:3 }]
       days: clone(CONFIG.defaultDays),       // [{ wd:1(月), periods:6 }] 基本時間割の曜日と、その日の時限数
+      // 変動枠: 学年一斉で、週ごとに教科を入れ替えるコマ [{ grade:1, key:'2-6' }](キーは「曜日-時限」)。中身は state.flex(自動の案)か state.changes(手で直したもの)
+      flexSlots: [],
       editPasswordHash: '',
       savedAt: null, savedBy: '',
     },
@@ -58,6 +60,8 @@ function emptyState(fy){
     events: null,
     // 週ごとの変更(出張などの入れ替え)。{ 'YYYY-MM-DD': { '1-2': { 2:'数' } } } 日付・学級・時限(0〜5=①〜⑥)ごとに、マスに入力した文字(js/week.js)
     changes: {},
+    // 変動枠の中身(自動で作った案)。{ 'YYYY-MM-DD': { '1-2': { 5:'英' } } } 形は changes と同じ。changes に同じマスがあれば、そちらが優先
+    flex: {},
     editLock: { active:false, since:null, by:'' },
   };
 }
@@ -79,6 +83,8 @@ function normalizeState(o){
     if(!s.events.classCounts) s.events.classCounts = {};
   }
   if(o.changes && typeof o.changes==='object') s.changes = o.changes;
+  if(o.flex && typeof o.flex==='object') s.flex = o.flex;
+  s.meta.flexSlots = (Array.isArray(s.meta.flexSlots) ? s.meta.flexSlots : []).filter(x=>x && x.grade && /^\d-\d+$/.test(x.key)).map(x=>({ grade:Number(x.grade), key:String(x.key) }));
   if(o.editLock) s.editLock = o.editLock;
   s.formatVersion = FORMAT_VERSION;
   return s;
@@ -312,9 +318,9 @@ function editorName(){ try{ return localStorage.getItem('tt.editorName') || ''; 
 //////////////////////// 元に戻す(Ctrl+Z) ////////////////////////
 // 時間割の表の入力(教員の時間割・週ごとの変更)だけを戻せるようにする(設定の変更は対象外)。ページを開いている間だけ有効。
 let undoStack = [], redoStack = [];
-function snapshot(){ return JSON.stringify({ teachers:state.teachers, base:state.base, changes:state.changes }); }
+function snapshot(){ return JSON.stringify({ teachers:state.teachers, base:state.base, changes:state.changes, flex:state.flex }); }
 function pushUndo(){ undoStack.push(snapshot()); if(undoStack.length>50) undoStack.shift(); redoStack = []; }
-function restoreSnap(s){ const o = JSON.parse(s); state.teachers = o.teachers; state.base = o.base; state.changes = o.changes || {}; }
+function restoreSnap(s){ const o = JSON.parse(s); state.teachers = o.teachers; state.base = o.base; state.changes = o.changes || {}; state.flex = o.flex || {}; }
 function doUndo(){ if(!editing || !undoStack.length) return; redoStack.push(snapshot()); restoreSnap(undoStack.pop()); markDirty(); renderAll(); }
 function doRedo(){ if(!editing || !redoStack.length) return; undoStack.push(snapshot()); restoreSnap(redoStack.pop()); markDirty(); renderAll(); }
 function resetUndo(){ undoStack = []; redoStack = []; }

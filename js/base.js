@@ -163,7 +163,7 @@ TABS.classes = {
       + '<div class="toolbar"><span class="seg" id="cGradeSeg">'
       + '<button data-g="0"'+(view.classGrade===0?' class="active"':'')+'>全学年</button>'
       + grades.map(g=>'<button data-g="'+g+'"'+(view.classGrade===g?' class="active"':'')+'>'+g+'年</button>').join('')
-      + '</span><span class="legend"><span class="lg g-err">重なり</span><span class="lg c-empty">授業なし</span><span class="lg c-merged">2人以上の先生</span></span></div>'
+      + '</span><span class="legend"><span class="lg g-err">重なり</span><span class="lg c-empty">授業なし</span><span class="lg c-merged">2人以上の先生</span>'+(state.meta.flexSlots.length ? '<span class="lg w-flex">変動枠</span>' : '')+'</span></div>'
       + issuesHtml(tt)
       + '<div id="cGrid"></div>'
       + '<h3>1週間のコマ数(教科ごと)</h3><div class="scroll-x" id="cCounts"></div>'
@@ -180,7 +180,7 @@ TABS.classes = {
         const cell = tt.byClass[cl.id][cols[c].slot];
         const teachers = [...new Set(cell.entries.map(e=>tname(e.teacherId)))];
         return { text:cell.text, title:teachers.join('・'),
-          cls: cell.conflict ? 'g-err' : cell.empty ? 'c-empty' : teachers.length>1 ? 'c-merged' : '' };
+          cls: cell.flex ? 'w-flex' : cell.conflict ? 'g-err' : cell.empty ? 'c-empty' : teachers.length>1 ? 'c-merged' : '' };
       },
       commit(){}, editable: ()=>false,
     });

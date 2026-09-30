@@ -21,6 +21,12 @@ TABS.settings = {
       + '</div><p class="hint">特別支援学級は、今は数えていません(必要になったら相談してください)。</p></section>'
       + '<section><h2>1週間の時限(基本時間割)</h2><div class="row">'+[1,2,3,4,5,6].map(dayRow).join('')+'</div>'
       + '<p class="hint">時限を減らしても、入力した時間割は消えません(表に出なくなるだけです。元に戻すとまた出ます)。行事などで時間がずれる日は、「週時間割」で行事予定の①〜⑥に合わせて表示します。</p></section>'
+      + '<section id="flexSettings"><h2>変動枠</h2><p class="hint">学年一斉で、週ごとに教科を入れ替えるコマです(時数の端数を調整するため)。チェックを入れたコマは、基本時間割では「変動」になり、中身は「週時間割」の「変動枠の案を作る」で、時数の足りない教科から自動で決まります(あとから手で直せます)。使わないときは、チェックを入れないでください。</p>'
+      + '<div class="scroll-x"><table class="grid counts"><thead><tr><th rowspan="2">学年</th>'
+      + dayList().map(dd=>'<th colspan="'+dd.periods+'">'+CONFIG.weekdays[dd.wd]+'</th>').join('') + '</tr><tr>'
+      + slotList().map(s=>'<th>'+s.p+'</th>').join('') + '</tr></thead><tbody>'
+      + m.grades.map(g=>'<tr><th class="l">'+g.grade+'年</th>'+slotList().map(s=>'<td class="c"><input type="checkbox" data-act-change="setFlex" data-g="'+g.grade+'" data-key="'+s.key+'"'+(isFlexSlot(g.grade, s.key)?' checked':'')+d+' title="'+g.grade+'年 '+slotLabel(s.key)+'"></td>').join('')+'</tr>').join('')
+      + '</tbody></table></div></section>'
       + '<section><h2>教科</h2><p class="hint">「短い名前」は、生徒の時間割の表に出る名前です。基本時間割の「教員」の表の「教科」の欄には、名前か短い名前のどちらを入れてもかまいません。</p>'
       + '<table class="grid"><thead><tr><th>名前</th><th>短い名前</th><th></th></tr></thead><tbody>'
       + state.subjects.map((s,i)=>'<tr><td><input type="text" data-path="subjects.'+i+'.name" value="'+esc(s.name)+'" style="width:160px"'+d+'></td>'
@@ -39,6 +45,15 @@ TABS.settings = {
       const days = state.meta.days.filter(x=>x.wd!==wd);
       if(n>0) days.push({ wd, periods:n });
       state.meta.days = days.sort((a,b)=>a.wd-b.wd);
+      markDirty(); renderAll();
+    }));
+    $('tab-settings').querySelectorAll('[data-act-change="setFlex"]').forEach(cb=>cb.addEventListener('change', ()=>{
+      if(!editing){ renderAll(); return; }
+      const g = Number(cb.dataset.g), key = cb.dataset.key;
+      const rest = state.meta.flexSlots.filter(x=>!(x.grade===g && x.key===key));
+      if(cb.checked) rest.push({ grade:g, key });
+      else if(!confirm(g+'年 '+slotLabel(key)+'を変動枠でなくします。\nこのコマについて作った変動枠の案は、表に出なくなります(基本時間割の入力が使われます)。よろしいですか？')){ renderAll(); return; }
+      state.meta.flexSlots = rest;
       markDirty(); renderAll();
     }));
   }

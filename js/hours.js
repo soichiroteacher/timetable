@@ -43,6 +43,7 @@ function tallyHours(until){
           if(/g-warn/.test(cell.cls)) warnDays.add(d.key);
           if(cell.kind==='tbd'){ add(bc[which], '未定', 1); return; }
           if(cell.kind==='event'){ add(bc[which], '行事', 1); return; }
+          if(cell.kind==='flexEmpty'){ add(bc[which], '変動(未定)', 1); return; }
           if(cell.kind!=='lesson' || !cell.subs.length) return;
           const share = 1 / cell.subs.length;
           cell.subs.forEach(sub=>{
@@ -96,7 +97,7 @@ TABS.hours = {
       + '<div class="scroll-x" id="hTable">'+hoursTableHtml(t, mode)+'</div>'
       + '<p class="hint">必要時数は'+(state.events.requiredHours ? '、行事予定アプリの設定の値です(直すときは行事予定アプリで直し、読み込み直してください)。' : '、学習指導要領の標準時数です(行事予定のファイルに必要時数がなかったため)。')
       + '技術と家庭は「技家」にまとめて比べます(マスにマウスを乗せると、別々の時数が出ます)。1コマに技術と家庭が入っているときは、それぞれ 0.5 と数えます。'
-      + '「未定」は行事予定の①〜⑥の「●」(教科が決まっていない授業)、「行事」は「行」のコマの数です。</p>';
+      + '「未定」は行事予定の①〜⑥の「●」(教科が決まっていない授業)、「行事」は「行」のコマの数です。「変動(未定)」は、中身をまだ決めていない変動枠のコマの数です(週時間割の「変動枠の案を作る」で決まります)。</p>';
     el.querySelectorAll('#hModeSeg button').forEach(b=>b.addEventListener('click', ()=>{ view.hoursMode = b.dataset.m; savePref(); renderAll(); }));
     el.querySelectorAll('#hGradeSeg button').forEach(b=>b.addEventListener('click', ()=>{ view.classGrade = Number(b.dataset.g); savePref(); renderAll(); }));
     $('hDate').addEventListener('change', e=>{ if(e.target.value){ view.hoursDate = e.target.value; savePref(); renderAll(); } });
@@ -113,7 +114,7 @@ function hoursNotesHtml(t){
 }
 function hoursTableHtml(t, mode){
   const subs = CONFIG.requiredSubjects;
-  const extra = ['その他', '未定', '行事'].filter(k=>Object.values(t.byClass).some(b=>b.actual[k] || b.plan[k]));
+  const extra = ['その他', '未定', '変動(未定)', '行事'].filter(k=>Object.values(t.byClass).some(b=>b.actual[k] || b.plan[k]));
   const classes = buildTimetable().classes.filter(c=>!view.classGrade || c.grade===view.classGrade);
   let html = '<table class="grid counts hours"><thead><tr><th>学級</th>'
     + subs.map(s=>'<th title="'+esc(s)+'">'+esc(CONFIG.requiredShort[s]||s)+'</th>').join('')

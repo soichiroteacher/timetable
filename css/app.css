@@ -141,3 +141,5 @@ table.hours td.h-ok, .h-ok{ background:#eef7ee; }
 table.hours .h-diff{ display:block; font-size:11px; font-weight:normal; }
 table.hours tr.h-req th, table.hours tr.h-req td{ background:#eef2f6; color:#555; font-size:13px; }
 table.hours .h-extra{ color:var(--sub); }
+.g-table td.w-flex, .w-flex{ background:#f3e8fb; }
+.g-table td.w-flex.w-moved{ background:#e9dcf7; }

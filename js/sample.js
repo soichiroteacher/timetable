@@ -5,7 +5,7 @@
 
 // 1週間の教科ごとのコマ数(見本用。学年ごと)
 const SAMPLE_HOURS = {
-  1: { 国語:4, 社会:3, 数学:4, 理科:3, 音楽:1, 美術:1, 保健体育:3, 技術:1, 家庭:1, 外国語:4 },
+  1: { 国語:4, 社会:3, 数学:4, 理科:3, 音楽:1, 美術:1, 保健体育:3, 技術:1, 家庭:1, 外国語:3 },   // 1年は変動枠が1コマあるので、外国語を1つ減らしてある(変動枠で補う)
   2: { 国語:4, 社会:3, 数学:3, 理科:4, 音楽:1, 美術:1, 保健体育:3, 技術:1, 家庭:1, 外国語:4 },
   3: { 国語:3, 社会:4, 数学:4, 理科:4, 音楽:1, 美術:1, 保健体育:3, 技家:1, 外国語:4 },
 };
@@ -30,12 +30,15 @@ const SAMPLE_TEACHERS = [
 ];
 // 決まった時間に全学級で行うもの(担任の行に書く)
 const SAMPLE_FIXED = [ ['1-1','道徳'], ['5-5','学活'], ['4-5','総合'], ['4-6','総合'] ];
+// 変動枠(学年, コマ)。見本では1年の火曜6時間目を変動枠にする(中身は週時間割の「変動枠の案を作る」で決まる)
+const SAMPLE_FLEX = [ [1, '2-6'] ];
 
 function makeSample(){
   const s = emptyState(currentFiscalYear());
   s.meta.schoolName = '見本中学校';
   s.meta.grades = [ { grade:1, classes:3 }, { grade:2, classes:3 }, { grade:3, classes:3 } ];
   s.meta.days = [ { wd:1, periods:6 }, { wd:2, periods:6 }, { wd:3, periods:6 }, { wd:4, periods:6 }, { wd:5, periods:5 } ];
+  s.meta.flexSlots = SAMPLE_FLEX.map(([grade, key])=>({ grade, key }));
   const keys = []; s.meta.days.forEach(d=>{ for(let p=1; p<=d.periods; p++) keys.push(d.wd+'-'+p); });
   s.teachers = SAMPLE_TEACHERS.map(([role, subject, name], i)=>({ id:'t'+(i+1), role, subject, name:name+'先生' }));
   const classes = []; s.meta.grades.forEach(g=>{ for(let n=1; n<=g.classes; n++) classes.push(g.grade+'-'+n); });
@@ -58,6 +61,7 @@ function makeSample(){
     const busyT = SAMPLE_TEACHERS.map(()=>new Set()), busyC = {}; classes.forEach(c=>busyC[c] = new Set());
     const subjDay = {};  // 同じ学級・同じ教科を1日に2回入れないため 'cls|subject|wd'
     const base = {}; s.teachers.forEach(t=>base[t.id] = {});
+    SAMPLE_FLEX.forEach(([g, key])=>classes.filter(c=>c[0]===String(g)).forEach(c=>busyC[c].add(key)));   // 変動枠には授業を置かない
     SAMPLE_FIXED.forEach(([key, text])=>{
       SAMPLE_TEACHERS.forEach((t,i)=>{ const m = t[0].match(/(\d-\d)担/); if(m){ base[s.teachers[i].id][key] = text; busyT[i].add(key); busyC[m[1]].add(key); } });
     });

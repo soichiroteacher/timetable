@@ -19,6 +19,8 @@ function classList(){
   return out;
 }
 function classExists(id){ return classList().some(c=>c.id===id); }
+// 変動枠(学年一斉で、週ごとに教科を入れ替えるコマ)か。設定の「変動枠」で決める
+function isFlexSlot(grade, key){ return (state.meta.flexSlots||[]).some(x=>x.grade===grade && x.key===key); }
 function subjectShort(name){ const s = state.subjects.find(x=>x.name===name); return s ? s.short : name; }
 function teacherLabel(t){ return t.name || t.role || '(名前なし)'; }
 
@@ -88,6 +90,11 @@ function buildTimetable(){
           issues.push({ level:'warn', text:teacherLabel(t)+'の'+slotLabel(key)+'「'+row[key]+'」: '+cid.replace('-','年')+'組は、設定の学級数にありません。', teacherId:t.id, slotKey:key });
           flag(t.id, key, 'warn'); return;
         }
+        // 変動枠のコマは週ごとに中身を決めるので、基本時間割の入力は学級の時間割に入れない
+        if(isFlexSlot(Number(cid.split('-')[0]), key)){
+          issues.push({ level:'warn', text:teacherLabel(t)+'の'+slotLabel(key)+'「'+row[key]+'」: '+cid.replace('-','年')+'組のこの時間は変動枠なので、学級の時間割には入れていません。', teacherId:t.id, slotKey:key });
+          flag(t.id, key, 'warn'); return;
+        }
         byClass[cid][key].entries.push({ teacherId:t.id, subject });
       });
     });
@@ -97,7 +104,8 @@ function buildTimetable(){
   classes.forEach(c=>{
     slots.forEach(s=>{
       const cell = byClass[c.id][s.key];
-      const subs = [...new Set(cell.entries.map(e=>e.subject))];
+      if(isFlexSlot(c.grade, s.key)){ cell.flex = true; cell.text = '変動'; return; }
+      const subs =[...new Set(cell.entries.map(e=>e.subject))];
       if(subs.length<=1){ cell.text = subs.length ? subjectShort(subs[0]) : ''; return; }
       const merged = subs.length===2 && (CONFIG.mergeSubjects[subs[0]+'|'+subs[1]] || CONFIG.mergeSubjects[subs[1]+'|'+subs[0]]);
       if(merged){ cell.text = merged; return; }
@@ -114,7 +122,7 @@ function buildTimetable(){
   slots.forEach(s=>{
     const any = classes.some(c=>byClass[c.id][s.key].entries.length);
     if(!any) return;
-    classes.forEach(c=>{ if(!byClass[c.id][s.key].entries.length){ byClass[c.id][s.key].empty = true; empties.push(c.label+' '+slotLabel(s.key)); } });
+    classes.forEach(c=>{ if(byClass[c.id][s.key].flex) return; if(!byClass[c.id][s.key].entries.length){ byClass[c.id][s.key].empty = true; empties.push(c.label+' '+slotLabel(s.key)); } });
   });
   if(empties.length) issues.push({ level:'warn', text:'授業の入っていないコマが '+empties.length+' か所あります(ほかの学級には授業がある時間): '+empties.slice(0,12).join('、')+(empties.length>12?' …ほか':'') });
 

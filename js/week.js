@@ -56,9 +56,9 @@ function buildWeek(monday){
       const blank = codes.every(x=>!x);
       if(blank && !guessed.includes(d.key)) guessed.push(d.key);
       for(let p=0; p<WEEK_PERIODS; p++){
-        const puts = [];   // この授業を受け持つ先生(変更があれば変更のほうを使う)
+        let puts = [];   // この授業を受け持つ先生(変更があれば変更のほうを使う)
         let code = codes[p] || '';
-        const cell = { text:'', title:'', cls:'', teacherIds:[], subs:[], kind:'none' };   // subs: 時数に数える教科、kind: lesson|tbd(教科未定)|event(行事)|none
+        let cell = { text:'', title:'', cls:'', teacherIds:[], subs:[], kind:'none' };   // subs: 時数に数える教科、kind: lesson|tbd(教科未定)|event(行事)|flexEmpty(中身の決まっていない変動枠)|none
         if(/^[1-9]$/.test(code)){
           const sk = d.wd+'-'+code;
           if(!slotKeys.has(sk)){
@@ -69,6 +69,12 @@ function buildWeek(monday){
             b.codes.add(code); if(!b.classes.includes(c.label)) b.classes.push(c.label);
           } else {
             const b = tt.byClass[c.id][sk];
+            if(b.flex){
+              // 変動枠: 中身は下で state.flex(自動の案)から入れる。まだ無ければ「変」のまま(時数では「変動(未定)」)
+              cell.flex = true; cell.text = '変'; cell.kind = 'flexEmpty'; cell.cls += ' w-flex';
+              cell.title = '変動枠(まだ中身が決まっていません。「変動枠の案を作る」で決まります)';
+              if(code!==String(p+1)) cell.cls += ' w-moved';
+            } else {
             cell.text = b.text; cell.origin = sk;
             cell.subs = [...new Set(b.entries.map(e=>e.subject))]; if(cell.subs.length) cell.kind = 'lesson';
             cell.teacherIds = [...new Set(b.entries.map(e=>e.teacherId))];
@@ -76,6 +82,7 @@ function buildWeek(monday){
             if(b.conflict) cell.cls += ' g-err';
             if(code!==String(p+1)) cell.cls += ' w-moved';
             b.entries.forEach(e=>puts.push([e.teacherId, { cid:c.id, origin:sk, subject:e.subject }]));
+            }
           }
         } else if(EVENT_CODE_SUBJECT[code]){
           const sub = EVENT_CODE_SUBJECT[code];
@@ -94,6 +101,16 @@ function buildWeek(monday){
           cell.text = code; cell.title = '授業なし('+code+')'; cell.cls += ' w-none';
         } else {
           cell.cls += ' w-none'; cell.title = '授業なし';
+        }
+        // 変動枠の中身(自動の案)。手で直したもの(state.changes)があれば、下でそちらが優先される
+        if(cell.flex){
+          const fi = flexInput(d.key, c.id, p);
+          if(fi!=null){
+            const fx = resolveChange(fi, c, hrTeacher);
+            fx.cell.flex = true; fx.cell.cls += ' w-flex';
+            fx.cell.title = '変動枠(自動の案)\n' + fx.cell.title + (fx.cell.teacherIds.length ? '\n'+fx.cell.teacherIds.map(tname).join('・') : '');
+            cell = fx.cell; puts = fx.puts;
+          }
         }
         // 週ごとの変更(出張などの入れ替え)。state.changes に書いてあれば、そちらを使う
         const input = changeInput(d.key, c.id, p);
@@ -206,8 +223,9 @@ TABS.week = {
       + '</span>'
       + (mode==='class' ? '<span class="seg" id="wGradeSeg"><button data-g="0"'+(view.classGrade===0?' class="active"':'')+'>全学年</button>'
           + grades.map(g=>'<button data-g="'+g+'"'+(view.classGrade===g?' class="active"':'')+'>'+g+'年</button>').join('')+'</span>' : '')
-      + '<span class="legend"><span class="lg w-moved">入れ替えた時間</span><span class="lg w-event">行事</span><span class="lg w-off">休み</span><span class="lg w-changed">週ごとの変更</span><span class="lg g-err">重なり</span></span>'
+      + '<span class="legend"><span class="lg w-moved">入れ替えた時間</span><span class="lg w-event">行事</span><span class="lg w-off">休み</span><span class="lg w-changed">週ごとの変更</span>'+(state.meta.flexSlots.length ? '<span class="lg w-flex">変動枠</span>' : '')+'<span class="lg g-err">重なり</span></span>'
       + (mode==='class' ? '<span class="sep-v"></span><button class="edit-act" data-act="undo" title="Ctrl+Z">↶ 元に戻す</button><button class="edit-act" data-act="redo" title="Ctrl+Y">↷ やり直す</button>' : '')
+      + (mode==='class' && state.meta.flexSlots.length ? '<span class="sep-v"></span><button class="edit-act" data-act="proposeFlex" title="この週から年度末までの変動枠の中身を、時数の足りない教科から自動で決めます">変動枠の案を作る</button><button class="edit-act" data-act="clearFlex">変動枠の案を消す</button>' : '')
       + '</div>'
       + weekEventsHtml(w)
       + weekIssuesHtml(w)
@@ -353,7 +371,90 @@ function resolveChange(input, c, hrTeacher){
   subs.forEach(sub=>{
     const ts = subjectTeachers(c.id, sub);
     if(!ts.length) warn = c.label+'で'+sub+'を受け持つ先生が、基本の時間割に見つかりません(先生なしで表示しています)。';
-    ts.forEach(tid=>{ if(!cell.teacherIds.includes(tid)) cell.teacherIds.push(tid); puts.push([tid, { cid:c.id, origin:'chg:'+sub, subject:sub }]); });
+    // origin は学級ごとに別にする(同じ先生が同じ時間に2学級に入ったら、重なりとして知らせるため)
+    ts.forEach(tid=>{ if(!cell.teacherIds.includes(tid)) cell.teacherIds.push(tid); puts.push([tid, { cid:c.id, origin:'chg:'+c.id+':'+sub, subject:sub }]); });
   });
   return { cell, puts, warn };
 }
+
+//////////////////////// 変動枠の案 ////////////////////////
+// 変動枠(設定の「変動枠」で決めたコマ)の中身を、時数の足りない教科から自動で決める。
+// 決め方(年度の時数を見て、足りない順に入れる):
+//   1. 決める範囲(from 以降)の案をいったん消し、その状態で年度末までの時数の予測を数える(tallyHours)。
+//   2. 範囲の日を古い順に見て、変動枠のマスごとに、学級の「必要時数 − 予測」がいちばん大きい教科を入れる。入れたら、その教科の足りない数を1つ減らす。
+//   3. その時間にほかの授業や予定(会議の印など)がある先生の教科は入れない(同じ時間に同じ教科を2学級に入れることも、これで起きない)。
+//   道徳・学活・総合は入れない(学活・総合は行事や授業のカットで確保する、という考え方。../timetable-hours-sim/HANDOFF.md)。
+// 手で直したマス(state.changes)は、そのまま残す(案では上書きしない)。
+const FLEX_EXCLUDE = ['道徳', '総合', '特別活動'];
+function flexInput(dateKey, cid, p){
+  const d = state.flex && state.flex[dateKey], c = d && d[cid];
+  return c && c[p]!=null && c[p]!=='' ? c[p] : null;
+}
+function clearFlexFrom(from){ Object.keys(state.flex).forEach(k=>{ if(k>=from) delete state.flex[k]; }); }
+function proposeFlex(from){
+  const fy = state.events.fiscalYear, end = fiscalEnd(fy);
+  clearFlexFrom(from);
+  const t = tallyHours(from);
+  const deficit = {};
+  buildTimetable().classes.forEach(c=>{
+    const req = requiredHoursOf(c.grade), b = t.byClass[c.id];
+    deficit[c.id] = {};
+    CONFIG.requiredSubjects.forEach(s=>{ deficit[c.id][s] = req[s] - (b.actual[s]||0) - (b.plan[s]||0); });
+  });
+  const cands = state.subjects.filter(s=>s.name && !FLEX_EXCLUDE.includes(s.name));
+  let placed = 0, unplaced = 0;
+  for(let mon = mondayOf(from); mon <= end; mon = addDays(mon, 7)){
+    const w = buildWeek(mon);
+    w.dates.forEach(d=>{
+      if(d.key < from || d.key > end) return;
+      for(let p=0; p<WEEK_PERIODS; p++){
+        const targets = w.classes.filter(c=>{ const cell = w.byClass[c.id][d.key][p]; return cell.kind==='flexEmpty' && !changeInput(d.key, c.id, p); });
+        if(!targets.length) continue;
+        // その時間に授業や予定のある先生
+        const busy = new Set(state.teachers.filter(tc=>{ const x = w.byTeacher[tc.id][d.key][p]; return x && x.text; }).map(tc=>tc.id));
+        // 足りない数の多い学級から決める
+        const need = c => Math.max(0, ...Object.values(deficit[c.id]));
+        targets.sort((a,b)=>need(b)-need(a)).forEach(c=>{
+          let best = null, bestScore = -Infinity;
+          cands.forEach(s=>{
+            const ts = subjectTeachers(c.id, s.name);
+            if(!ts.length || ts.some(id=>busy.has(id))) return;
+            const rs = requiredParts(s.name)[0][0];
+            const score = deficit[c.id][rs]!=null ? deficit[c.id][rs] : -999;
+            if(score > bestScore){ best = s; bestScore = score; }
+          });
+          if(!best){ unplaced++; return; }
+          subjectTeachers(c.id, best.name).forEach(id=>busy.add(id));
+          const rs = requiredParts(best.name)[0][0];
+          if(deficit[c.id][rs]!=null) deficit[c.id][rs] -= 1;
+          ((state.flex[d.key] = state.flex[d.key] || {})[c.id] = state.flex[d.key][c.id] || {})[p] = best.short || best.name;
+          placed++;
+        });
+      }
+    });
+  }
+  return { placed, unplaced };
+}
+ACTIONS.proposeFlex = ()=>{
+  if(!state.meta.flexSlots.length){ alert('変動枠がまだ決まっていません。「設定」の「変動枠」で、変動枠にするコマにチェックを入れてください。'); return; }
+  const from = view.week < fiscalStart(state.events.fiscalYear) ? fiscalStart(state.events.fiscalYear) : view.week;
+  if(!confirm(mdLabel(from)+'から年度末までの変動枠の中身を、時数の足りない教科から自動で決めます。\nこの期間に前に作った案は、作り直します(手で直したマスはそのまま残ります)。よろしいですか？')) return;
+  pushUndo();
+  const r = proposeFlex(from);
+  markDirty(); renderAll();
+  // 案を入れても、まだ必要時数に足りない教科(変動枠のある学年だけ)。先生の空きがなくて入れられなかったものなど
+  const t = tallyHours(from), grades = [...new Set(state.meta.flexSlots.map(x=>x.grade))], short = [];
+  buildTimetable().classes.filter(c=>grades.includes(c.grade)).forEach(c=>{
+    const req = requiredHoursOf(c.grade), b = t.byClass[c.id];
+    const list = CONFIG.requiredSubjects.map(s=>[s, req[s] - (b.actual[s]||0) - (b.plan[s]||0)]).filter(x=>x[1]>0).map(x=>(CONFIG.requiredShort[x[0]]||x[0])+' −'+fmtHours(x[1]));
+    if(list.length) short.push(c.label+': '+list.join('、'));
+  });
+  alert('変動枠の案を作りました('+r.placed+'コマ)。'+(r.unplaced ? '\n先生の空きがなく、決められなかったコマが '+r.unplaced+'コマあります(「変」のまま残っています。手で入れてください)。' : '')
+    + (short.length ? '\n\n案を入れても、まだ必要時数に足りない教科があります(その教科の先生が、変動枠の時間に空いていないためです。変動枠のコマを変えるか、手で入れ替えてください):\n'+short.slice(0,12).join('\n')+(short.length>12?'\n…ほか':'') : '')
+    + '\n\n案は、「生徒」の表のマスに教科を入れて直せます。時数は「時数」の画面で確かめられます。');
+};
+ACTIONS.clearFlex = ()=>{
+  const from = view.week;
+  if(!confirm(mdLabel(from)+'から年度末までの変動枠の案を消します(手で直したマスはそのまま残ります)。よろしいですか？')) return;
+  pushUndo(); clearFlexFrom(from); markDirty(); renderAll();
+};
