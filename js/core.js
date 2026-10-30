@@ -10,6 +10,8 @@ let dirty = false;         // 保存していない変更があるか
 let isSample = false;      // 見本を表示中か(見本は保存しない)
 let lastKnownModified = 0; // 最後に読み書きしたときのファイルの更新時刻(ほかの人の保存に気づくため)
 let lastLockStamp = 0;     // 最後に「編集中」の印を保存した時刻
+const SESSION_ID = newId('s'); // この画面の識別(編集中の印 editLock.session)
+let myLogStart = null;     // 今の編集の記録(editLog の1件)の始めた時刻
 const supportsFSA = 'showOpenFilePicker' in window;
 
 // 画面の見方の好み(人ごと。ブラウザに覚えておくだけで、データファイルには入れない)
@@ -62,7 +64,9 @@ function emptyState(fy){
     changes: {},
     // 変動枠の中身(自動で作った案)。{ 'YYYY-MM-DD': { '1-2': { 5:'英' } } } 形は changes と同じ。changes に同じマスがあれば、そちらが優先
     flex: {},
-    editLock: { active:false, since:null, by:'' },
+    editLock: { active:false, since:null, by:'', session:'' },
+    // 編集の記録(誰が・いつ編集したかだけ)。[{ by, start, end }] 新しいものが先頭、200件まで
+    editLog: [],
   };
 }
 function normalizeState(o){
@@ -86,6 +90,7 @@ function normalizeState(o){
   if(o.flex && typeof o.flex==='object') s.flex = o.flex;
   s.meta.flexSlots = (Array.isArray(s.meta.flexSlots) ? s.meta.flexSlots : []).filter(x=>x && x.grade && /^\d-\d+$/.test(x.key)).map(x=>({ grade:Number(x.grade), key:String(x.key) }));
   if(o.editLock) s.editLock = o.editLock;
+  s.editLog = (Array.isArray(o.editLog) ? o.editLog : []).filter(x=>x && x.start).map(x=>({ by:String(x.by||''), start:String(x.start), end:String(x.end||x.start) })).slice(0, 200);
   s.formatVersion = FORMAT_VERSION;
   return s;
 }
@@ -266,6 +271,9 @@ async function writeFile(opts){
   }
   state.meta.savedAt = new Date().toISOString();
   state.meta.savedBy = editorName();
+  // 編集の記録: 今の編集の件の end を保存した時刻にする(閉じ忘れても最後に保存した時刻が残るように)
+  const mine = myLogStart && state.editLog.find(x=>x.start===myLogStart);
+  if(mine) mine.end = state.meta.savedAt;
   const w = await fileHandle.createWritable();
   await w.write(stateToText(state));
   await w.close();
@@ -354,7 +362,9 @@ async function startEditing(){
   }
   editing = true;
   resetUndo();
-  state.editLock = { active:true, since:new Date().toISOString(), by:name };
+  state.editLock = { active:true, since:new Date().toISOString(), by:name, session:SESSION_ID };
+  // 編集の記録を1件足す(見本では記録しない)
+  if(!isSample){ myLogStart = state.editLock.since; state.editLog.unshift({ by:name, start:myLogStart, end:myLogStart }); state.editLog = state.editLog.slice(0, 200); }
   closeOverlay('editOverlay');
   renderAll();
   if(fileHandle && !isSample){
