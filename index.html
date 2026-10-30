@@ -26,6 +26,7 @@
   <button id="btnSave" disabled>保存</button>
   <button id="btnOpen">開く</button>
   <button id="btnNew">新規作成</button>
+  <button id="btnLog" title="誰が・いつ編集したかの一覧を見ます">編集の記録</button>
   <button id="btnHelp">❓ 使い方</button>
   <span id="status"></span>
   <span id="fileName"></span>
@@ -76,6 +77,16 @@
     <div class="row" id="ePwRow"><span class="k">パスワード</span><span class="v"><input type="password" id="ePw"></span></div>
     <div class="err" id="eErr"></div>
     <div class="foot"><span class="spacer"></span><button id="eCancel">やめる</button><button class="primary" id="eOk">編集を始める</button></div>
+  </div>
+</div>
+
+<!-- ===== 「編集の記録」の画面(誰が・いつ編集したか。何を変えたかは記録しない) ===== -->
+<div class="overlay" id="logOverlay">
+  <div class="modal" style="width:520px">
+    <h2>編集の記録</h2>
+    <div class="hint">誰が・いつ編集したかの記録です(新しい順。何を変えたかは記録していません)。「〜」のあとは、最後に保存した時刻です。</div>
+    <div id="logList" style="max-height:60vh;overflow:auto;margin-top:8px"></div>
+    <div class="foot"><span class="spacer"></span><button class="primary" id="logClose">閉じる</button></div>
   </div>
 </div>
 

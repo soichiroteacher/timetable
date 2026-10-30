@@ -86,7 +86,8 @@
   },                                        // days には年度内の「どれかの学年が登校日」「行事の文字がある」「祝日」の日だけ入る(無い日は休み)
   changes: { 'YYYY-MM-DD': { '1-2': { 2:'数' } } },  // 週ごとの変更。日付・学級・時限(0〜5=①〜⑥)ごとに、マスに入力した文字のまま(表示のたびに resolveChange で読み直すので、基本時間割を直しても担当の先生が正しく付く)
   flex: { 'YYYY-MM-DD': { '1-2': { 5:'英' } } },   // 変動枠の中身(自動の案)。形は changes と同じ。changes に同じマスがあればそちらが優先
-  editLock: { active, since, by },
+  editLock: { active, since, by, session },   // 編集中の印。session はその画面の識別(core.js の SESSION_ID)
+  editLog: [{ by, start, end }],              // 編集の記録(誰が・いつだけ)。新しい順・200件まで。startEditing で1件足し、writeFile のたびに end を進める。見本では足さない
 }
 ```
 

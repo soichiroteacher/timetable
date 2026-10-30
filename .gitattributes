@@ -1,0 +1,8 @@
+# GitHub の「Download ZIP」に、開発・管理用のファイルを入れないため(共通ルール)
+CLAUDE.md export-ignore
+HANDOFF.md export-ignore
+CHANGELOG.md export-ignore
+.claude export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+serve.ps1 export-ignore

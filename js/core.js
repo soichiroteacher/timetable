@@ -142,6 +142,7 @@ function renderTop(){
   $('editBadge').classList.toggle('on', editing);
   $('btnEdit').textContent = editing ? '編集を終える' : '✏ 編集する';
   $('btnEdit').disabled = !has;
+  $('btnLog').disabled = !has;
   $('btnReload').hidden = !fileHandle || editing;
   $('btnSave').disabled = !editing || isSample;
   $('fileName').textContent = fileHandle ? 'ファイル：' + fileHandle.name : '';
@@ -200,6 +201,7 @@ function importBackup(){
     try{ o = normalizeState(JSON.parse(text)); }catch(e){ alert('読み込めませんでした。\n'+e.message+'\n\n「データを書き出す(バックアップ)」で作ったファイルを選んでください。'); return; }
     if(!confirm('「'+name+'」の内容で、今のデータを置き換えます。今のデータは消えます。よろしいですか？\n(不安なときは、先に「データを書き出す(バックアップ)」で今の状態を控えてください)')) return;
     o.editLock = state.editLock; // 編集中の印は今のものを引き継ぐ
+    o.editLog = state.editLog;   // 編集の記録も今のものを引き継ぐ(控えのファイルの古い記録で消さないように)
     state = o;
     markDirty(); renderAll();
     alert('復元しました。');
@@ -376,10 +378,10 @@ async function startEditing(){
 }
 async function stopEditing(){
   clearTimeout(autosaveTimer);
-  state.editLock = { active:false, since:null, by:'' };
+  state.editLock = { active:false, since:null, by:'', session:'' };
   if(fileHandle && !isSample){
     try{ const ok = await writeFile(); if(ok===false) return; }
-    catch(e){ alert('保存できませんでした。\n'+e.message+'\n\n共有サーバーにつながっているか確かめてから、もう一度「編集を終える」を押してください。'); state.editLock = { active:true, since:new Date().toISOString(), by:editorName() }; return; }
+    catch(e){ alert('保存できませんでした。\n'+e.message+'\n\n共有サーバーにつながっているか確かめてから、もう一度「編集を終える」を押してください。'); state.editLock = { active:true, since:new Date().toISOString(), by:editorName(), session:SESSION_ID }; return; }
   } else if(!isSample && dirty){
     if(!confirm('まだ保存していません。保存せずに編集を終えると、入力した内容は消えます。\n(「キャンセル」を押してから「保存」を押してください)\n\n保存せずに終えますか？')) { state.editLock.active = true; return; }
   }
@@ -411,6 +413,21 @@ window.addEventListener('beforeunload', e=>{
   if(editing && (dirty || !isSample)){ e.preventDefault(); e.returnValue = ''; }
 });
 
+//////////////////////// 編集の記録 ////////////////////////
+// state.editLog([{ by, start, end }] 新しい順)を一覧にする。記録を足すのは startEditing、end を進めるのは writeFile
+function renderEditLog(){
+  const log = (state && state.editLog) || [];
+  const hm = d=>d.getHours()+':'+pad2(d.getMinutes());
+  $('logList').innerHTML = log.length
+    ? '<table class="grid"><thead><tr><th>名前</th><th>日付</th><th>時刻</th></tr></thead><tbody>'
+      + log.map(x=>{ const s = new Date(x.start), e = new Date(x.end||x.start);
+        return '<tr><td>'+esc(x.by||'(名前なし)')+'</td><td>'+s.getFullYear()+'/'+(s.getMonth()+1)+'/'+s.getDate()+'('+CONFIG.weekdays[s.getDay()]+')</td><td>'+hm(s)+'〜'+hm(e)+'</td></tr>'; }).join('')
+      + '</tbody></table>'
+    : '<p>まだ記録はありません。「✏ 編集する」で編集を始めると記録されます。</p>';
+}
+$('btnLog').addEventListener('click', ()=>{ if(!state) return; renderEditLog(); openOverlay('logOverlay'); });
+$('logClose').addEventListener('click', ()=>closeOverlay('logOverlay'));
+
 //////////////////////// 新規作成 ////////////////////////
 function openNewDialog(){
   $('nYear').value = currentFiscalYear(); $('nSchool').value = ''; $('nErr').textContent = '';
@@ -423,14 +440,21 @@ $('nCancel').addEventListener('click', ()=>closeOverlay('newOverlay'));
 $('nOk').addEventListener('click', async ()=>{
   const y = Number($('nYear').value);
   if(!(y>=2000 && y<=2100)){ $('nErr').textContent = '年度は西暦の数字(例：2026)で入れてください。'; return; }
+  // 作った人も編集の記録に残すので、名前を覚えていなければ聞く
+  if(!editorName()){
+    const nm = (prompt('お名前を入れてください。(編集の記録と「○○先生が編集中」の表示に使います)', '')||'').trim();
+    if(!nm){ $('nErr').textContent = 'お名前を入れないと作れません。'; return; }
+    try{ localStorage.setItem('tt.editorName', nm); }catch(e){}
+  }
   if(editing && fileHandle && !isSample) await stopEditing();
   const prev = { state, fileHandle, isSample, editing, dirty };
   state = emptyState(y);
   state.meta.schoolName = $('nSchool').value.trim();
   fileHandle = null; isSample = false; editing = true; dirty = false;
   resetUndo();
-  state.editLock = { active:true, since:new Date().toISOString(), by:editorName() };
+  state.editLock = { active:true, since:new Date().toISOString(), by:editorName(), session:SESSION_ID };
   closeOverlay('newOverlay');
+  myLogStart = state.editLock.since; state.editLog = [{ by:editorName(), start:myLogStart, end:myLogStart }];
   const ok = await doSaveAs();
   if(!ok){ ({ state, fileHandle, isSample, editing, dirty } = prev); renderAll(); return; } // 保存先を選ばなかったときは元に戻す
   lastLockStamp = Date.now();

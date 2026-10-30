@@ -97,6 +97,14 @@ function makeSample(){
       s.changes = { [tue]: { '1-1': { [i-1]:sh(tj), [j-1]:sh(ti) } } };
       break swap;
     }
+    // 「編集の記録」を見本で試せるように、架空の名前の記録を入れておく(見本で編集しても記録は足さない)
+    const ago = (d, h, m)=>{ const t = new Date(); t.setDate(t.getDate()-d); t.setHours(h, m, 0, 0); return t.toISOString(); };
+    s.editLog = [
+      { by:'山田', start:ago(1,15,40), end:ago(1,16,25) },
+      { by:'佐藤', start:ago(3,8,10), end:ago(3,8,30) },
+      { by:'山田', start:ago(6,16,0), end:ago(6,17,15) },
+      { by:'鈴木', start:ago(10,13,20), end:ago(10,13,50) },
+    ];
     return s;
   }
   throw new Error('見本の時間割を作れませんでした。');
