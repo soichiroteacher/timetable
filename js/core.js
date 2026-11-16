@@ -416,6 +416,34 @@ function renderEditLog(){
 $('btnLog').addEventListener('click', ()=>{ if(!state) return; renderEditLog(); openOverlay('logOverlay'); });
 $('logClose').addEventListener('click', ()=>closeOverlay('logOverlay'));
 
+//////////////////////// 表の上の横スクロールバー ////////////////////////
+// 横に長い表(.g-scroll・.scroll-x)の上にも横スクロールバーを付け、下のスクロールバーと連動させる(共通ルール)。
+// 表の一番下まで縦にスクロールしないと横に動かせない、ということがないようにするため。
+// 各タブは innerHTML で描き直すので、main の中が変わるたびに付け直す(付いていればバーの幅だけ合わせ直す)。
+function attachTopScrolls(){
+  document.querySelectorAll('main .g-scroll, main .scroll-x').forEach(el=>{
+    if(!el._topSync){
+      const bar = document.createElement('div'); bar.className = 'top-scroll';
+      const inner = document.createElement('div'); bar.appendChild(inner);
+      el.parentNode.insertBefore(bar, el);
+      bar.addEventListener('scroll', ()=>{ if(el.scrollLeft !== bar.scrollLeft) el.scrollLeft = bar.scrollLeft; });
+      el.addEventListener('scroll', ()=>{ if(bar.scrollLeft !== el.scrollLeft) bar.scrollLeft = el.scrollLeft; });
+      el._topSync = ()=>{
+        if(!bar.isConnected) return;
+        inner.style.width = el.scrollWidth+'px';
+        bar.style.width = el.clientWidth+'px';
+        bar.style.display = el.scrollWidth > el.clientWidth+1 ? '' : 'none'; // 横にはみ出していないときは出さない
+        if(bar.scrollLeft !== el.scrollLeft) bar.scrollLeft = el.scrollLeft;
+      };
+      if(window.ResizeObserver) new ResizeObserver(()=>el._topSync()).observe(el);
+    }
+    el._topSync();
+  });
+}
+let topScrollQueued = false;
+new MutationObserver(()=>{ if(topScrollQueued) return; topScrollQueued = true; setTimeout(()=>{ topScrollQueued = false; attachTopScrolls(); }, 0); }).observe(document.querySelector('main'), { childList:true, subtree:true });
+window.addEventListener('resize', attachTopScrolls);
+
 //////////////////////// 新規作成 ////////////////////////
 function openNewDialog(){
   $('nYear').value = currentFiscalYear(); $('nSchool').value = ''; $('nErr').textContent = '';
