@@ -46,7 +46,7 @@
 
 ## 時間割アプリの作り
 
-外部ライブラリなし。`index.html` から `js/` のファイルを順に読み込む(順番に意味がある。`index.html` の下を参照)。保存と編集の仕組み(データファイル・編集中の表示・自動保存・パスワード)は `../exam-manager`(定期テスト)と同じもの。
+外部ライブラリなし。`index.html` から `js/` のファイルを順に読み込む(順番に意味がある。`index.html` の下を参照)。保存と編集の仕組み(データファイル・編集中の表示・自動保存。編集のパスワードは共通ルールでなくした)は `../exam-manager`(定期テスト)と同じもの。
 
 | ファイル | 中身 |
 |---|---|
@@ -75,7 +75,7 @@
     grades: [{ grade:1, classes:3 }, ...],   // 学年ごとの学級数。学級の ID は "学年-組"(例 "1-2")
     days: [{ wd:1, periods:6 }, ...],        // 基本時間割の曜日(1=月…6=土)と、その日の時限数
     flexSlots: [{ grade:1, key:'2-6' }],     // 変動枠(学年・「曜日-時限」)
-    editPasswordHash, savedAt, savedBy,
+    savedAt, savedBy,   // 以前の editPasswordHash は normalizeState で消す
   },
   subjects: [{ name:'国語', short:'国' }, ...], // 教科。name は行事予定アプリの必要時数の教科名にそろえてある(技術・家庭は分けている)
   teachers: [{ id, role:'1-1担', subject:'国語', name:'〇〇先生' }], // 教員の時間割の行の順番どおり

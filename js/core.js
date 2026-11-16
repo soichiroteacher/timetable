@@ -49,7 +49,6 @@ function emptyState(fy){
       days: clone(CONFIG.defaultDays),       // [{ wd:1(月), periods:6 }] 基本時間割の曜日と、その日の時限数
       // 変動枠: 学年一斉で、週ごとに教科を入れ替えるコマ [{ grade:1, key:'2-6' }](キーは「曜日-時限」)。中身は state.flex(自動の案)か state.changes(手で直したもの)
       flexSlots: [],
-      editPasswordHash: '',
       savedAt: null, savedBy: '',
     },
     subjects: CONFIG.defaultSubjects.map(([name, short])=>({ name, short })),
@@ -73,6 +72,8 @@ function normalizeState(o){
   if(!o || typeof o!=='object' || o.app!=='timetable') throw new Error('時間割アプリのデータファイルではありません。');
   const s = emptyState(o.meta && o.meta.fiscalYear || currentFiscalYear());
   Object.assign(s.meta, o.meta || {});
+  // 編集のパスワードはやめた(共通ルール)。以前の版のファイルにあっても読み飛ばし、次の保存で消える
+  delete s.meta.editPasswordHash;
   if(!Array.isArray(s.meta.grades) || !s.meta.grades.length) s.meta.grades = clone(CONFIG.defaultGrades);
   s.meta.grades = s.meta.grades.map(g=>({ grade:Number(g.grade)||1, classes:Math.max(0, Math.min(12, Number(g.classes)||0)) }));
   if(!Array.isArray(s.meta.days) || !s.meta.days.length) s.meta.days = clone(CONFIG.defaultDays);
@@ -172,13 +173,6 @@ document.addEventListener('click', e=>{
 // Excel から貼り付けた文字を、行と列に分ける(タブ区切り)
 function parsePasted(text){
   return String(text||'').replace(/\r/g,'').split('\n').filter(l=>l.trim()).map(l=>l.split('\t').map(c=>c.trim().replace(/^"|"$/g,'')));
-}
-
-//////////////////////// 編集パスワード ////////////////////////
-async function sha256Hex(text){
-  if(!(window.crypto && crypto.subtle)) throw new Error('このブラウザではパスワードを使えません。Chrome か Edge で開いてください。');
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
 //////////////////////// バックアップと復元 ////////////////////////
@@ -338,11 +332,9 @@ function resetUndo(){ undoStack = []; redoStack = []; }
 //////////////////////// 編集する / 編集を終える ////////////////////////
 function openEditDialog(){
   $('eName').value = editorName();
-  $('ePw').value = '';
-  $('ePwRow').hidden = !state.meta.editPasswordHash;
   $('eErr').textContent = '';
   openOverlay('editOverlay');
-  setTimeout(()=> ($('eName').value ? (state.meta.editPasswordHash ? $('ePw') : $('eOk')) : $('eName')).focus(), 30);
+  setTimeout(()=> ($('eName').value ? $('eOk') : $('eName')).focus(), 30);
 }
 async function startEditing(){
   const name = $('eName').value.trim();
@@ -354,10 +346,6 @@ async function startEditing(){
       const { obj, modified } = await readHandle(fileHandle);
       state = obj; lastKnownModified = modified;
     }catch(e){ $('eErr').textContent = 'データファイルを読み直せませんでした。共有サーバーにつながっているか確かめてください。('+e.message+')'; return; }
-  }
-  if(state.meta.editPasswordHash){
-    let h; try{ h = await sha256Hex($('ePw').value); }catch(e){ $('eErr').textContent = e.message; return; }
-    if(h !== state.meta.editPasswordHash){ $('eErr').textContent = 'パスワードが違います。'; renderAll(); return; }
   }
   if(isLockFresh(state.editLock) && state.editLock.by !== name){
     if(!confirm('⚠ いま '+sensei(state.editLock.by)+'が編集中です。\n\n同時に編集すると、どちらかの入力が消えてしまいます。\nふつうは、相手が「編集を終える」まで待ってください。\n\nそれでも編集を始めますか？(相手がブラウザを閉じ忘れている場合など)')){ closeOverlay('editOverlay'); renderAll(); return; }
@@ -391,7 +379,7 @@ async function stopEditing(){
 $('btnEdit').addEventListener('click', ()=>{ if(!state) return; editing ? stopEditing() : openEditDialog(); });
 $('eOk').addEventListener('click', startEditing);
 $('eCancel').addEventListener('click', ()=>closeOverlay('editOverlay'));
-['eName','ePw'].forEach(id=> $(id).addEventListener('keydown', e=>{ if(e.key==='Enter') startEditing(); }));
+$('eName').addEventListener('keydown', e=>{ if(e.key==='Enter') startEditing(); });
 $('btnSave').addEventListener('click', doSave);
 $('btnOpen').addEventListener('click', doOpen);
 $('bnOpen').addEventListener('click', doOpen);

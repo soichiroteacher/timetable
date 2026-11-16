@@ -1,5 +1,5 @@
 'use strict';
-// 「設定」タブ: 学校名・年度・学級数・曜日ごとの時限数・教科・編集パスワード・バックアップ
+// 「設定」タブ: 学校名・年度・学級数・曜日ごとの時限数・教科・バックアップ
 
 TABS.settings = {
   render(){
@@ -33,8 +33,6 @@ TABS.settings = {
         + '<td><input type="text" data-path="subjects.'+i+'.short" value="'+esc(s.short)+'" style="width:80px"'+d+'></td>'
         + '<td><button class="small danger edit-act" data-act="delSubject" data-i="'+i+'"'+d+'>削除</button></td></tr>').join('')
       + '</tbody></table><div class="line"><button class="edit-act" data-act="addSubject"'+d+'>＋ 教科を追加</button></div></section>'
-      + '<section><h2>編集パスワード</h2><p class="hint">決めておくと、「編集する」のときにパスワードを聞かれます。空のままならパスワードなしで編集できます。</p>'
-      + '<div class="row"><span>'+(m.editPasswordHash?'パスワードあり':'パスワードなし')+'</span><button class="edit-act" data-act="setPassword"'+d+'>パスワードを変える</button></div></section>'
       + '<section><h2>バックアップ</h2><p class="hint">データファイルとは別に、今の状態をファイルに控えておけます。ファイル名に日付が入ります。</p>'
       + '<div class="line"><button data-act="exportBackup"'+(isSample?' disabled':'')+'>データを書き出す(バックアップ)</button>'
       + '<button class="edit-act" data-act="importBackup"'+(isSample?' disabled':d)+'>データを読み込む(復元)</button></div></section>'
@@ -64,13 +62,6 @@ ACTIONS.delSubject = el=>{
   const used = state.teachers.filter(t=>t.subject===s.name).length;
   if(!confirm('教科「'+(s.name||'(名前なし)')+'」を削除します。'+(used?'\n('+used+'人の先生の教科になっています。先生の教科の欄はそのまま残ります)':'')+'\nよろしいですか？')) return;
   state.subjects.splice(Number(el.dataset.i), 1); markDirty(); renderAll();
-};
-ACTIONS.setPassword = async ()=>{
-  const p = prompt('新しいパスワードを入れてください。\n(空のまま「OK」を押すと、パスワードなしになります)', '');
-  if(p===null) return;
-  state.meta.editPasswordHash = p ? await sha256Hex(p) : '';
-  markDirty(); renderAll();
-  alert(p ? 'パスワードを変えました。忘れないように控えておいてください。' : 'パスワードなしにしました。');
 };
 ACTIONS.exportBackup = ()=>exportBackup();
 ACTIONS.importBackup = ()=>importBackup();
