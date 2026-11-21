@@ -177,7 +177,6 @@ function parsePasted(text){
 }
 
 //////////////////////// バックアップと復元 ////////////////////////
-function stateToText(o){ return JSON.stringify(o, null, 2); }
 function downloadBlob(blob, name){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = name;
@@ -187,21 +186,22 @@ function downloadBlob(blob, name){
 function downloadText(text, name){ downloadBlob(new Blob([text], {type:'application/json'}), name); }
 function exportBackup(){
   if(!state || isSample) return;
-  downloadText(stateToText(state), backupFileName(state.meta.fiscalYear));
+  const name = backupFileName(state.meta.fiscalYear);
+  downloadBlob(new Blob([toDataJs(state, dataKeyOf(name))], {type:'text/javascript'}), name);
 }
 // 「データを読み込む(復元)」: 選んだファイルの内容を、いつものファイルに書き込む(「この内容に戻す」と同じ。js/folder.js の restoreToMain)
 function importBackup(){
   if(isSample || viewOnly) return;
   pickFileText(async (text, name)=>{
     let o;
-    try{ o = normalizeState(JSON.parse(text)); }catch(e){ alert('読み込めませんでした。\n'+e.message+'\n\n「データを書き出す(バックアップ)」で作ったファイルか、「バックアップ」フォルダのファイルを選んでください。'); return; }
+    try{ o = normalizeState(parseDataText(text)); }catch(e){ alert('読み込めませんでした。\n'+e.message+'\n\n「データを書き出す(バックアップ)」で作ったファイルか、「バックアップ」フォルダのファイルを選んでください。'); return; }
     await restoreToMain(o, name);
   });
 }
 // Chrome/Edge 以外でも読み込みだけはできるように、input type=file で読む
 function pickFileText(cb, accept){
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = accept || '.json,application/json';
+  inp.type = 'file'; inp.accept = accept || '.js,.json';
   inp.onchange = async ()=>{ const f = inp.files[0]; if(f) cb(await f.text(), f.name, f); };
   inp.click();
 }
@@ -226,16 +226,16 @@ function isLockFresh(lock){
 }
 async function readHandle(handle){
   const f = await handle.getFile();
-  return { obj: normalizeState(JSON.parse(await f.text())), modified: f.lastModified };
+  return { obj: normalizeState(parseDataText(await f.text())), modified: f.lastModified };
 }
-const FILE_TYPES = [{ description:'時間割のデータ', accept:{'application/json':['.json']} }];
+const FILE_TYPES = [{ description:'時間割のデータ', accept:{'text/javascript':['.js'], 'application/json':['.json']} }];
 // ほかの人が保存したかもしれない内容を、書き込む前に確かめる
 async function writeFile(opts){
   if(!fileHandle || isSample) return;
   const f = await fileHandle.getFile();
   if(lastKnownModified && f.lastModified !== lastKnownModified && !(opts && opts.force)){
     let other = null;
-    try{ other = JSON.parse(await f.text()); }catch(e){}
+    try{ other = parseDataText(await f.text()); }catch(e){}
     const by = other && other.meta && other.meta.savedBy;
     if(!confirm('このファイルは、あなたが開いたあとに'+(by ? sensei(by)+'が' : 'ほかの場所で')+'保存しています。\nこのまま保存すると、そちらの変更は消えてしまいます。\n\n保存しますか？(「キャンセル」を押すと保存しません。その場合は、入力した内容を紙などに控えてから、ページを開き直して入力し直してください)')){
       clearTimeout(autosaveTimer);
@@ -249,7 +249,7 @@ async function writeFile(opts){
   const mine = myLogStart && state.editLog.find(x=>x.start===myLogStart);
   if(mine) mine.end = state.meta.savedAt;
   const w = await fileHandle.createWritable();
-  await w.write(stateToText(state));
+  await w.write(toDataJs(state, dataKeyOf(fileHandle.name))); // 中身の形は js/folder.js の toDataJs
   await w.close();
   lastKnownModified = (await fileHandle.getFile()).lastModified;
   dirty = false;
@@ -347,7 +347,8 @@ async function stopEditing(){
   editing = false; dirty = false;
   renderAll();
 }
-$('btnEdit').addEventListener('click', ()=>{ if(!state) return; editing ? stopEditing() : openEditDialog(); });
+// 編集するときは、データのフォルダから開いている必要がある(見るだけの先生は <script src> で開いているため。js/folder.js)
+$('btnEdit').addEventListener('click', async ()=>{ if(!state) return; if(editing){ stopEditing(); return; } if(await ensureFolderForEdit()) openEditDialog(); });
 $('eOk').addEventListener('click', startEditing);
 $('eCancel').addEventListener('click', ()=>closeOverlay('editOverlay'));
 $('eName').addEventListener('keydown', e=>{ if(e.key==='Enter') startEditing(); });
@@ -434,7 +435,7 @@ $('nOk').addEventListener('click', async ()=>{
     if(!nm){ $('nErr').textContent = 'お名前を入れないと作れません。'; return; }
     try{ localStorage.setItem('tt.editorName', nm); }catch(e){}
   }
-  // 新しいファイルは、データのフォルダに「時間割_YYYY年度.json」の名前で作る(js/folder.js。保存先を選ぶ画面は出さない)
+  // 新しいファイルは、データのフォルダに「時間割_YYYY年度.js」の名前で作る(js/folder.js。保存先を選ぶ画面は出さない)
   if(!dataDir){ $('nErr').textContent = '先に「データのフォルダを選ぶ」で、ファイルを置くフォルダを選んでください。'; return; }
   let h;
   try{
@@ -445,7 +446,7 @@ $('nOk').addEventListener('click', async ()=>{
   catch(e){ $('nErr').textContent = 'ファイルを作れませんでした。フォルダに書き込む許可があるか確かめてください。('+e.message+')'; return; }
   state = emptyState(y);
   state.meta.schoolName = $('nSchool').value.trim();
-  fileHandle = h; mainHandle = h; mainFy = y; viewOnly = null; isSample = false; editing = true; dirty = false; lastKnownModified = 0;
+  fileHandle = h; mainHandle = h; mainFy = y; viewOnly = null; fromScript = false; isSample = false; editing = true; dirty = false; lastKnownModified = 0;
   resetUndo();
   state.editLock = { active:true, since:new Date().toISOString(), by:editorName(), session:SESSION_ID };
   closeOverlay('newOverlay');

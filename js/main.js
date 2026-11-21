@@ -30,15 +30,16 @@ async function boot(){
   }
   // 覚えているデータのフォルダから、一番新しい年度のファイルを開く(js/folder.js)。
   // ブラウザの決まりで、許可が切れているときは、ボタンを押してもらってから開く
+  // 許可がなければ、フォルダを選ばずに <script src> で一番新しい年度を見るだけで開く(見るだけの先生はこれで足りる)
   let d; try{ d = await idbGet('dataDir'); }catch(e){}
+  if(d){ dataDir = d; if(await dirPermission(d, false)){ await openFromDir(); return; } }
+  if(await openByScript()) return;
   if(!d){
     // 以前の版(ファイルを直接開いていた版)を使っていた人への案内
     let old; try{ old = await idbGet('lastFile'); }catch(e){}
-    if(old) showBanner('使い方が変わりました。これからは、データファイルが入っている<b>フォルダ</b>を選んで使います。前回のファイル「'+esc(old.name)+'」が入っているフォルダを、「データのフォルダを選ぶ」で選んでください。');
+    if(old) showBanner('使い方が変わりました。これからは、データファイルが入っている<b>フォルダ</b>(このアプリと同じフォルダ)を選んで使います。「データのフォルダを選ぶ」で選んでください。');
     return;
   }
-  dataDir = d;
-  if(await dirPermission(d, false)){ await openFromDir(); return; }
   showBanner('データのフォルダ「'+esc(d.name)+'」を開くには、ここを押してください → <button class="primary" id="bnDirBtn">データのフォルダを開く</button>');
   $('bnDirBtn').addEventListener('click', async ()=>{
     if(!(await dirPermission(d, true))){ alert('フォルダを開く許可がありませんでした。もう一度押すか、「データのフォルダを選ぶ」で選び直してください。'); return; }
