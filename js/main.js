@@ -28,19 +28,21 @@ async function boot(){
     $('bnLast').innerHTML = '<b style="color:var(--warn)">このブラウザでは、データファイルへの保存ができません。Chrome か Edge で開いてください。</b>';
     return;
   }
-  // 前回のファイルがあれば、すぐ開けるようにする(ブラウザの決まりで、起動のたびに1回だけ許可のボタンが要る)
-  let h; try{ h = await idbGet('lastFile'); }catch(e){}
-  if(!h) return;
-  try{
-    if(await h.queryPermission({mode:'readwrite'}) === 'granted'){ await openHandle(h); return; }
-  }catch(e){}
-  $('bnLast').hidden = false;
-  $('bnLast').innerHTML = '前回のファイル「'+esc(h.name)+'」を開くには、ここを押してください → <button class="primary" id="bnLastBtn">前回のファイルを開く</button>';
-  $('bnLastBtn').addEventListener('click', async ()=>{
-    try{
-      if(await h.requestPermission({mode:'readwrite'}) !== 'granted') return;
-      await openHandle(h);
-    }catch(e){ alert('開けませんでした。ファイルが移動・削除されていないか確かめてください。\n'+e.message); }
+  // 覚えているデータのフォルダから、一番新しい年度のファイルを開く(js/folder.js)。
+  // ブラウザの決まりで、許可が切れているときは、ボタンを押してもらってから開く
+  let d; try{ d = await idbGet('dataDir'); }catch(e){}
+  if(!d){
+    // 以前の版(ファイルを直接開いていた版)を使っていた人への案内
+    let old; try{ old = await idbGet('lastFile'); }catch(e){}
+    if(old) showBanner('使い方が変わりました。これからは、データファイルが入っている<b>フォルダ</b>を選んで使います。前回のファイル「'+esc(old.name)+'」が入っているフォルダを、「データのフォルダを選ぶ」で選んでください。');
+    return;
+  }
+  dataDir = d;
+  if(await dirPermission(d, false)){ await openFromDir(); return; }
+  showBanner('データのフォルダ「'+esc(d.name)+'」を開くには、ここを押してください → <button class="primary" id="bnDirBtn">データのフォルダを開く</button>');
+  $('bnDirBtn').addEventListener('click', async ()=>{
+    if(!(await dirPermission(d, true))){ alert('フォルダを開く許可がありませんでした。もう一度押すか、「データのフォルダを選ぶ」で選び直してください。'); return; }
+    await openFromDir();
   });
 }
 boot();

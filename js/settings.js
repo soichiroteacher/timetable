@@ -33,9 +33,15 @@ TABS.settings = {
         + '<td><input type="text" data-path="subjects.'+i+'.short" value="'+esc(s.short)+'" style="width:80px"'+d+'></td>'
         + '<td><button class="small danger edit-act" data-act="delSubject" data-i="'+i+'"'+d+'>削除</button></td></tr>').join('')
       + '</tbody></table><div class="line"><button class="edit-act" data-act="addSubject"'+d+'>＋ 教科を追加</button></div></section>'
-      + '<section><h2>バックアップ</h2><p class="hint">データファイルとは別に、今の状態をファイルに控えておけます。ファイル名に日付が入ります。</p>'
+      + '<section><h2>データのフォルダとバックアップ</h2>'
+      + (isSample ? '<p class="hint">見本のため、データのフォルダは使っていません。</p>'
+        : '<div class="row"><span class="k">データのフォルダ</span><span>'+(dataDir ? esc(dataDir.name) : '(まだ選んでいません)')+'</span><button data-act="chooseDataDir">データのフォルダを選び直す</button></div>'
+        + '<div class="row"><span class="k">いつものファイル</span><span>'+(mainHandle ? esc(mainHandle.name) : '(なし)')+'</span></div>'
+        + '<div class="row"><span class="k">自動バックアップ</span><span>'+(backupCount==null ? '—' : backupCount+' 件')+'</span></div>'
+        + '<p class="hint">編集を始めるとき、その日のバックアップがまだなければ、データのフォルダの中の「'+BACKUP_DIR+'」フォルダに自動で1つ控えます(何人が編集しても1日1つ)。アプリでは消さないので、たまったら古いものをエクスプローラーで消してください。</p>')
+      + '<p class="hint">「データを書き出す(バックアップ)」は、今の状態を手元(ダウンロード)に控えます。「データを読み込む(復元)」は、選んだファイルの内容を、いつものファイルに書き込みます(先に今の内容を「'+BACKUP_DIR+'」フォルダに控えます)。</p>'
       + '<div class="line"><button data-act="exportBackup"'+(isSample?' disabled':'')+'>データを書き出す(バックアップ)</button>'
-      + '<button class="edit-act" data-act="importBackup"'+(isSample?' disabled':d)+'>データを読み込む(復元)</button></div></section>'
+      + '<button data-act="importBackup"'+(isSample || viewOnly || !mainHandle ?' disabled':'')+'>データを読み込む(復元)</button></div></section>'
       + '</div>';
     $('tab-settings').querySelectorAll('[data-act-change="setPeriods"]').forEach(sel=>sel.addEventListener('change', ()=>{
       if(!editing) return;

@@ -170,5 +170,5 @@ function makeSampleEventsFile(fy, s){
   };
 }
 ACTIONS.exportSampleEvents = ()=>{
-  downloadText(JSON.stringify(makeSampleEventsFile(state.meta.fiscalYear, state), null, 2), '見本の行事予定_'+state.meta.fiscalYear+'年度.json');
+  downloadText(JSON.stringify(makeSampleEventsFile(state.meta.fiscalYear, state), null, 2), CONFIG.eventsAppName+'_'+state.meta.fiscalYear+'年度.json');
 };

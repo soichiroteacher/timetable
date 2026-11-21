@@ -195,6 +195,7 @@ TABS.week = {
       '<div class="toolbar"><h2>週時間割</h2><span class="hint">行事予定の①〜⑥と、基本の時間割(「基本時間割」の「教員」)から、週ごとの時間割を作ります。</span></div>'
       + '<div class="toolbar">'
       + '<button class="edit-act" data-act="importEvents">📥 行事予定を読み込む</button>'
+      + '<button class="edit-act" data-act="chooseEventsDir" title="行事予定アプリのデータのフォルダを選び直して、読み込みます">行事予定のフォルダを選び直す</button>'
       + (isSample ? '<button data-act="exportSampleEvents" title="行事予定アプリのデータファイルと同じ形の、見本のファイルを作ります">📤 見本の行事予定を書き出す</button>' : '')
       + '<span class="hint" id="wSource">'+(ev ? '読み込んだ行事予定: 「'+esc(ev.fileName)+'」('+ev.fiscalYear+'年度'+(ev.schoolName?'・'+esc(ev.schoolName):'')+'、'+fmtDateTime(ev.importedAt)+'に読み込み)' : '')+'</span>'
       + '</div>';

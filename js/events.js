@@ -114,9 +114,38 @@ function convertEventsFile(o, fileName, grades){
   return out;
 }
 
-// 「行事予定を読み込む」ボタン
-ACTIONS.importEvents = ()=>{
-  pickFileText((text, name)=>{
+// 「行事予定を読み込む」ボタン: 行事予定アプリのデータのフォルダ(一度選ぶと覚える)から、「行事予定_YYYY年度.json」を読む。
+// この時間割と同じ年度のファイルがあればそれを、なければ名前の年度が一番新しいものを読む(共通ルール「データファイルの置き方」)。
+// 行事予定のファイルは読むだけで、書き換えない。
+const EVENTS_RE = new RegExp('^'+CONFIG.eventsAppName+'_(\\d{4})年度\\.json$');
+ACTIONS.importEvents = async ()=>{
+  if(!supportsFSA){ pickFileText(importEventsText); return; } // フォルダを使えないブラウザでは、ファイルを選んでもらう
+  let dir = null;
+  try{ dir = await idbGet('eventsDir'); }catch(e){}
+  if(dir && !(await dirPermission(dir, true, 'read'))) dir = null;
+  if(!dir) dir = await chooseEventsDir();
+  if(!dir) return;
+  let files;
+  try{ files = await findYearFiles(dir, EVENTS_RE); }
+  catch(e){ alert('行事予定のフォルダ「'+dir.name+'」を読めませんでした。「行事予定のフォルダを選び直す」で選び直してください。\n'+e.message); return; }
+  if(!files.length){ alert('行事予定のフォルダ「'+dir.name+'」に、「'+CONFIG.eventsAppName+'_'+state.meta.fiscalYear+'年度.json」のような名前のファイルがありません。\n「行事予定のフォルダを選び直す」で、行事予定アプリのデータのフォルダを選んでください。'); return; }
+  const f = files.find(x=>x.fy===state.meta.fiscalYear) || files[0];
+  try{ importEventsText(await (await f.h.getFile()).text(), f.name); }
+  catch(e){ alert('読み込めませんでした。\n'+e.message); }
+};
+async function chooseEventsDir(){
+  try{
+    const d = await window.showDirectoryPicker({ id:'school-events-data', mode:'read' });
+    try{ await idbSet('eventsDir', d); }catch(e){}
+    return d;
+  }catch(e){ if(e.name!=='AbortError') alert('フォルダを選べませんでした。\n'+e.message); return null; }
+}
+ACTIONS.chooseEventsDir = async ()=>{
+  alert('行事予定アプリのデータのフォルダ(「'+CONFIG.eventsAppName+'_'+state.meta.fiscalYear+'年度.json」が入っているフォルダ)を選んでください。');
+  if(await chooseEventsDir()) ACTIONS.importEvents();
+};
+function importEventsText(text, name){
+  {   // (以前はファイルを選ぶ画面の中で動かしていたので、1段深い)
     let conv;
     try{ conv = convertEventsFile(JSON.parse(text), name, state.meta.grades.map(g=>g.grade)); }
     catch(e){ alert('読み込めませんでした。\n'+e.message+'\n\n行事予定アプリのデータファイル(.json)を選んでください。'); return; }
@@ -131,5 +160,5 @@ ACTIONS.importEvents = ()=>{
     if(!view.week || view.week < mondayOf(fiscalStart(conv.fiscalYear)) || view.week > fiscalEnd(conv.fiscalYear)){ view.week = defaultWeek(); savePref(); }
     markDirty(); renderAll();
     setStatus('行事予定を読み込みました(「'+name+'」)', 'saved');
-  });
-};
+  }
+}

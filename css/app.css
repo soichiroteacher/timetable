@@ -163,3 +163,7 @@ table.hours .h-extra{ color:var(--sub); }
   .g-scroll, .scroll-x{ max-height:none !important; overflow:visible !important; }
   .g-table thead th, .g-table .g-sticky, .scroll-x table.grid th, .scroll-x table.grid td{ position:static !important; }
 }
+/* 見るだけで開いているとき・新しい年度の案内(js/folder.js) */
+.folder-notice{ background:#fff7e0; border-bottom:1px solid #e3c770; padding:8px 14px; font-size:15px; }
+.folder-notice button{ margin-left:6px; }
+@media print{ .folder-notice{ display:none !important; } }

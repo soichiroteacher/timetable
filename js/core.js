@@ -138,15 +138,16 @@ function renderAll(){
 }
 function renderTop(){
   const has = !!state;
-  $('schoolTitle').textContent = has ? state.meta.fiscalYear + '年度' + (state.meta.schoolName ? '　' + state.meta.schoolName : '') + (isSample ? '　【見本・保存されません】' : '') : '';
+  $('schoolTitle').textContent = has ? state.meta.fiscalYear + '年度' + (state.meta.schoolName ? '　' + state.meta.schoolName : '') + (isSample ? '　【見本・保存されません】' : '') + (viewOnly ? '　【見るだけ】' : '') : '';
   $('editBadge').textContent = editing ? '✏ 編集中' : '閲覧のみ';
   $('editBadge').classList.toggle('on', editing);
   $('btnEdit').textContent = editing ? '編集を終える' : '✏ 編集する';
-  $('btnEdit').disabled = !has;
+  $('btnEdit').disabled = !has || !!viewOnly; // 手で開いたファイルは見るだけ(js/folder.js)
   $('btnLog').disabled = !has;
   $('btnReload').hidden = !fileHandle || editing;
   $('btnSave').disabled = !editing || isSample;
-  $('fileName').textContent = fileHandle ? 'ファイル：' + fileHandle.name : '';
+  $('fileName').textContent = fileHandle ? 'ファイル：' + fileHandle.name : viewOnly ? 'ファイル：' + viewOnly.name : '';
+  renderFolderNotice();
   document.querySelectorAll('.edit-only').forEach(el=> el.hidden = !editing);
   const w = $('lockWarning');
   if(has && !editing && isLockFresh(state.editLock)){
@@ -186,19 +187,15 @@ function downloadBlob(blob, name){
 function downloadText(text, name){ downloadBlob(new Blob([text], {type:'application/json'}), name); }
 function exportBackup(){
   if(!state || isSample) return;
-  downloadText(stateToText(state), '時間割_バックアップ_'+todayYmd()+'.json');
+  downloadText(stateToText(state), backupFileName(state.meta.fiscalYear));
 }
+// 「データを読み込む(復元)」: 選んだファイルの内容を、いつものファイルに書き込む(「この内容に戻す」と同じ。js/folder.js の restoreToMain)
 function importBackup(){
-  if(!editing || isSample) return;
+  if(isSample || viewOnly) return;
   pickFileText(async (text, name)=>{
     let o;
-    try{ o = normalizeState(JSON.parse(text)); }catch(e){ alert('読み込めませんでした。\n'+e.message+'\n\n「データを書き出す(バックアップ)」で作ったファイルを選んでください。'); return; }
-    if(!confirm('「'+name+'」の内容で、今のデータを置き換えます。今のデータは消えます。よろしいですか？\n(不安なときは、先に「データを書き出す(バックアップ)」で今の状態を控えてください)')) return;
-    o.editLock = state.editLock; // 編集中の印は今のものを引き継ぐ
-    o.editLog = state.editLog;   // 編集の記録も今のものを引き継ぐ(控えのファイルの古い記録で消さないように)
-    state = o;
-    markDirty(); renderAll();
-    alert('復元しました。');
+    try{ o = normalizeState(JSON.parse(text)); }catch(e){ alert('読み込めませんでした。\n'+e.message+'\n\n「データを書き出す(バックアップ)」で作ったファイルか、「バックアップ」フォルダのファイルを選んでください。'); return; }
+    await restoreToMain(o, name);
   });
 }
 // Chrome/Edge 以外でも読み込みだけはできるように、input type=file で読む
@@ -216,7 +213,7 @@ function pickFile(cb, accept){
 }
 
 //////////////////////// ファイルの読み書き ////////////////////////
-// 前回開いたファイルを覚えておき、次に起動したときすぐ開けるようにする(IndexedDB にファイルの場所だけを保存する)。
+// データのフォルダを覚えておき、次に起動したときすぐ開けるようにする(IndexedDB にフォルダの場所だけを保存する。js/folder.js)。
 function idb(){ return new Promise((res,rej)=>{ const r = indexedDB.open('timetable', 1); r.onupgradeneeded = ()=>r.result.createObjectStore('kv'); r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error); }); }
 async function idbSet(k,v){ const db = await idb(); return new Promise((res,rej)=>{ const tx = db.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); tx.oncomplete = res; tx.onerror = ()=>rej(tx.error); }); }
 async function idbGet(k){ const db = await idb(); return new Promise((res,rej)=>{ const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error); }); }
@@ -231,26 +228,7 @@ async function readHandle(handle){
   const f = await handle.getFile();
   return { obj: normalizeState(JSON.parse(await f.text())), modified: f.lastModified };
 }
-async function openHandle(handle){
-  const { obj, modified } = await readHandle(handle);
-  state = obj; fileHandle = handle; isSample = false; editing = false; dirty = false;
-  lastKnownModified = modified;
-  resetUndo();
-  try{ await idbSet('lastFile', handle); }catch(e){}
-  setStatus('');
-  renderAll();
-}
 const FILE_TYPES = [{ description:'時間割のデータ', accept:{'application/json':['.json']} }];
-async function doOpen(){
-  if(!(await confirmDiscard())) return;
-  if(editing) await stopEditing();
-  if(!supportsFSA){ alert('このブラウザでは、データファイルを開いて保存することができません。Chrome か Edge で開いてください。'); return; }
-  try{
-    const startIn = await idbGet('lastFile').catch(()=>undefined);
-    const [h] = await window.showOpenFilePicker({ types:FILE_TYPES, ...(startIn?{startIn}:{}) });
-    await openHandle(h);
-  }catch(e){ if(e.name!=='AbortError') alert('開けませんでした。\n'+e.message+'\n\n時間割のデータファイル(.json)を選んでいるか確かめてください。'); }
-}
 // ほかの人が保存したかもしれない内容を、書き込む前に確かめる
 async function writeFile(opts){
   if(!fileHandle || isSample) return;
@@ -279,23 +257,10 @@ async function writeFile(opts){
   setStatus('保存しました('+t.getHours()+':'+pad2(t.getMinutes())+')', 'saved');
   return true;
 }
-function suggestedFileName(){ return '時間割_'+state.meta.fiscalYear+'年度.json'; }
-async function doSaveAs(){
-  if(!supportsFSA){ downloadText(stateToText(state), suggestedFileName()); dirty = false; return true; }
-  try{
-    const startIn = await idbGet('lastFile').catch(()=>undefined);
-    const h = await window.showSaveFilePicker({ suggestedName: suggestedFileName(), types:FILE_TYPES, ...(startIn?{startIn}:{}) });
-    fileHandle = h; lastKnownModified = 0;
-    try{ await idbSet('lastFile', h); }catch(e){}
-    await writeFile({force:true});
-    renderTop();
-    return true;
-  }catch(e){ if(e.name!=='AbortError') alert('保存できませんでした。\n'+e.message); return false; }
-}
 async function doSave(){
-  if(!editing || isSample) return;
+  if(!editing || isSample || !fileHandle) return;
   clearTimeout(autosaveTimer);
-  try{ if(fileHandle) await writeFile(); else await doSaveAs(); }
+  try{ await writeFile(); }
   catch(e){ setStatus('保存できませんでした', 'dirty'); alert('保存できませんでした。\n'+e.message+'\n\n共有サーバーにつながっているか確かめてから、もう一度「保存」を押してください。'); }
 }
 let autosaveTimer = null;
@@ -303,7 +268,7 @@ function markDirty(){
   if(!editing) return;
   dirty = true;
   if(isSample){ setStatus('見本のため保存されません', 'dirty'); return; }
-  setStatus(fileHandle ? '保存待ち…' : '未保存(「保存」を押して保存先を決めてください)', 'dirty');
+  setStatus(fileHandle ? '保存待ち…' : '保存できません(データのフォルダのファイルを開いていません)', 'dirty');
   // 先生の名前が入るので、ブラウザ(localStorage)には控えを残さない(共有のパソコンで他人に見られないように)
   if(!fileHandle) return;
   clearTimeout(autosaveTimer);
@@ -339,6 +304,7 @@ function openEditDialog(){
 async function startEditing(){
   const name = $('eName').value.trim();
   if(!name){ $('eErr').textContent = 'お名前を入れてください。'; return; }
+  if(viewOnly){ closeOverlay('editOverlay'); return; } // 手で開いたファイルは見るだけ
   try{ localStorage.setItem('tt.editorName', name); }catch(e){}
   // ほかの先生が保存した最新の内容から編集を始める(古い画面のまま編集して、相手の変更を消してしまわないように)
   if(fileHandle && !isSample){
@@ -349,6 +315,11 @@ async function startEditing(){
   }
   if(isLockFresh(state.editLock) && state.editLock.by !== name){
     if(!confirm('⚠ いま '+sensei(state.editLock.by)+'が編集中です。\n\n同時に編集すると、どちらかの入力が消えてしまいます。\nふつうは、相手が「編集を終える」まで待ってください。\n\nそれでも編集を始めますか？(相手がブラウザを閉じ忘れている場合など)')){ closeOverlay('editOverlay'); renderAll(); return; }
+  }
+  // その日の最初の編集の前に、本体のバックアップを1つ取る(共通ルール。何人が編集しても1日1つ)
+  if(fileHandle && !isSample && dataDir && fileHandle===mainHandle){
+    try{ await takeBackup(mainHandle, mainFy, true); }
+    catch(e){ if(!confirm('今日のバックアップを取れませんでした('+e.message+')。\nこのまま編集を始めますか？')){ closeOverlay('editOverlay'); return; } }
   }
   editing = true;
   resetUndo();
@@ -381,11 +352,12 @@ $('eOk').addEventListener('click', startEditing);
 $('eCancel').addEventListener('click', ()=>closeOverlay('editOverlay'));
 $('eName').addEventListener('keydown', e=>{ if(e.key==='Enter') startEditing(); });
 $('btnSave').addEventListener('click', doSave);
-$('btnOpen').addEventListener('click', doOpen);
-$('bnOpen').addEventListener('click', doOpen);
+$('btnOpen').addEventListener('click', ()=>openFileViewOnly());
+$('bnOpen').addEventListener('click', ()=>openFileViewOnly());
+$('bnFolder').addEventListener('click', ()=>chooseDataDir());
 $('btnReload').addEventListener('click', async ()=>{
   if(!fileHandle || editing) return;
-  try{ await openHandle(fileHandle); setStatus('最新の内容を読み込みました', 'saved'); }
+  try{ await openMain(mainHandle, mainFy); setStatus('最新の内容を読み込みました', 'saved'); }
   catch(e){ alert('読み直せませんでした。\n'+e.message); }
 });
 // 編集中は、入力がなくても定期的に「編集中」の印を保存し直す(ほかの先生に編集中だと伝わり続けるように)
@@ -462,17 +434,24 @@ $('nOk').addEventListener('click', async ()=>{
     if(!nm){ $('nErr').textContent = 'お名前を入れないと作れません。'; return; }
     try{ localStorage.setItem('tt.editorName', nm); }catch(e){}
   }
+  // 新しいファイルは、データのフォルダに「時間割_YYYY年度.json」の名前で作る(js/folder.js。保存先を選ぶ画面は出さない)
+  if(!dataDir){ $('nErr').textContent = '先に「データのフォルダを選ぶ」で、ファイルを置くフォルダを選んでください。'; return; }
+  let h;
+  try{
+    if((await findYearFiles(dataDir, MAIN_RE)).some(x=>x.fy===y)){ $('nErr').textContent = '「'+mainFileName(y)+'」はもうあります。別の年度を選ぶか、「やめる」を押してください。'; return; }
+  }catch(e){ $('nErr').textContent = 'データのフォルダを読めませんでした。共有サーバーにつながっているか確かめてください。('+e.message+')'; return; }
   if(editing && fileHandle && !isSample) await stopEditing();
-  const prev = { state, fileHandle, isSample, editing, dirty };
+  try{ h = await dataDir.getFileHandle(mainFileName(y), { create:true }); }
+  catch(e){ $('nErr').textContent = 'ファイルを作れませんでした。フォルダに書き込む許可があるか確かめてください。('+e.message+')'; return; }
   state = emptyState(y);
   state.meta.schoolName = $('nSchool').value.trim();
-  fileHandle = null; isSample = false; editing = true; dirty = false;
+  fileHandle = h; mainHandle = h; mainFy = y; viewOnly = null; isSample = false; editing = true; dirty = false; lastKnownModified = 0;
   resetUndo();
   state.editLock = { active:true, since:new Date().toISOString(), by:editorName(), session:SESSION_ID };
   closeOverlay('newOverlay');
   myLogStart = state.editLock.since; state.editLog = [{ by:editorName(), start:myLogStart, end:myLogStart }];
-  const ok = await doSaveAs();
-  if(!ok){ ({ state, fileHandle, isSample, editing, dirty } = prev); renderAll(); return; } // 保存先を選ばなかったときは元に戻す
+  try{ await writeFile({ force:true }); }
+  catch(e){ alert('保存できませんでした。\n'+e.message); }
   lastLockStamp = Date.now();
   view.tab = 'settings'; savePref();
   renderAll();
