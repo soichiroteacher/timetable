@@ -84,7 +84,7 @@ function makeSample(){
     // 会議の印も少し入れておく(学級の時間割には出ない)
     ['1-6','3-6'].forEach(k=>[2,4,10].forEach(i=>{ if(!busyT[i].has(k)) base[s.teachers[i].id][k] = '企画'; }));
     s.base = base;
-    s.events = convertEventsFile(makeSampleEventsFile(s.meta.fiscalYear, s), '見本の行事予定.json', s.meta.grades.map(g=>g.grade));
+    s.events = convertEventsFile(makeSampleEventsFile(s.meta.fiscalYear, s), '見本の行事予定.js', s.meta.grades.map(g=>g.grade));
     // 週ごとの変更の見本: 6月2週目の火曜、1年1組の2つの時間を入れ替える(出張で先生がいない時間との入れ替え、のつもり)。
     // 入れ替えても先生が重ならない組み合わせを探す
     let tue = dkey(s.meta.fiscalYear,6,8); while(keyToDate(tue).getDay()!==2) tue = addDays(tue,1);
@@ -170,5 +170,7 @@ function makeSampleEventsFile(fy, s){
   };
 }
 ACTIONS.exportSampleEvents = ()=>{
-  downloadText(JSON.stringify(makeSampleEventsFile(state.meta.fiscalYear, state), null, 2), CONFIG.eventsAppName+'_'+state.meta.fiscalYear+'年度.json');
+  // 行事予定アプリの本体と同じ .js の形で書き出す(../school-events/ に置けば「行事予定を読み込む」で読める)
+  const name = CONFIG.eventsAppName+'_'+state.meta.fiscalYear+'年度.js';
+  downloadText(toDataJs(makeSampleEventsFile(state.meta.fiscalYear, state), dataKeyOf(name)), name);
 };

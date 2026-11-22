@@ -195,13 +195,13 @@ TABS.week = {
       '<div class="toolbar"><h2>週時間割</h2><span class="hint">行事予定の①〜⑥と、基本の時間割(「基本時間割」の「教員」)から、週ごとの時間割を作ります。</span></div>'
       + '<div class="toolbar">'
       + '<button class="edit-act" data-act="importEvents">📥 行事予定を読み込む</button>'
-      + '<button class="edit-act" data-act="chooseEventsDir" title="行事予定アプリのデータのフォルダを選び直して、読み込みます">行事予定のフォルダを選び直す</button>'
+      + '<button class="edit-act" data-act="pickEventsFile" title="行事予定アプリのデータファイルを選んで読み込みます(自動で読めないときに使います)">ファイルを選んで読み込む</button>'
       + (isSample ? '<button data-act="exportSampleEvents" title="行事予定アプリのデータファイルと同じ形の、見本のファイルを作ります">📤 見本の行事予定を書き出す</button>' : '')
       + '<span class="hint" id="wSource">'+(ev ? '読み込んだ行事予定: 「'+esc(ev.fileName)+'」('+ev.fiscalYear+'年度'+(ev.schoolName?'・'+esc(ev.schoolName):'')+'、'+fmtDateTime(ev.importedAt)+'に読み込み)' : '')+'</span>'
       + '</div>';
     if(!ev){
       el.innerHTML = head + '<div class="banner"><p><b>行事予定がまだ読み込まれていません。</b></p>'
-        + '<p class="hint">「✏ 編集する」を押してから「📥 行事予定を読み込む」を押し、行事予定アプリのデータファイル(.json)を選んでください。行事予定のファイルは書き換えません。<br>'
+        + '<p class="hint">「✏ 編集する」を押してから「📥 行事予定を読み込む」を押してください。行事予定アプリのフォルダ(school-events)から、同じ年度の「行事予定_〇年度.js」を自動で読みます。読めないときは、データファイルを選ぶ画面が出ます。行事予定のファイルは書き換えません。<br>'
         + '読み込んだ内容はこの時間割のデータファイルに控えておくので、ほかの先生は読み込み直さなくても見られます。行事予定を直したときは、もう一度読み込んでください。</p></div>';
       return;
     }
