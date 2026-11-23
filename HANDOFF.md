@@ -110,7 +110,7 @@ Claude Code を使えないときに手で直す手順は [自分で直すとき
 
 ### 動作確認のしかた
 
-- `.claude/launch.json` の `static-server`(`serve.ps1`、`http://localhost:8420/`)で開く。行事予定アプリのフォルダから作業するときは、そちらの `.claude/launch.json` の `timetable` でも開ける。
+- `.claude/launch.json` の `static-server`(`serve.ps1`、`http://localhost:8421/`)で開く。行事予定アプリのフォルダから作業するときは、そちらの `.claude/launch.json` の `timetable` でも開ける。
 - Claude Code のブラウザ画面で、`document.getElementById('bnSample').click()` で見本を開き、`editing = true` で編集中にしてから、`teacherGrid.select(行, 列)` → `teacherGrid.pasteText('…')` などで入力を試せる。`buildTimetable().issues` で確認の結果を見る。
 - Excel の読み込みは `importXlsxFile(new File([バイト列], 'x.xlsx'))` で、ファイル選択の画面を出さずに試せる。書き出しは `window.downloadBlob` を一時的に差し替えると中身を受け取れる。
 - `confirm`・`alert` を使う操作は、テストのときに `window.confirm = ()=>true` などで置き換える。
@@ -145,7 +145,7 @@ Claude Code を使えないときに手で直す手順は [自分で直すとき
 - `README.md` … 使う先生向けの説明
 - `CHANGELOG.md` … 変更の記録
 - `CLAUDE.md` … Claude Code 向けの短い指示
-- `serve.ps1` / `.claude/launch.json` … 動作確認用のローカルサーバー（開発用の補助。アプリの配布には不要。`http://localhost:8420/` で index.html が開く）
+- `serve.ps1` / `.claude/launch.json` … 動作確認用のローカルサーバー（開発用の補助。アプリの配布には不要。`http://localhost:8421/` で index.html が開く）
 - `claudeからの引継ぎ/` … 最初に受け取った引き継ぎ資料。**元の状態は `files.zip` の中身**。`files/` 内のファイルは作業初期に一度編集してしまったもので、元の状態ではない。今後は参照しなくてよい（編集もしない）。古い見本が入っているので `.gitignore` で除外している。
 
 ## 前提とする時間割の形式
@@ -182,7 +182,7 @@ Claude Code を使えないときに手で直す手順は [自分で直すとき
 ## テスト方法
 ExcelJSは実ブラウザでしか動かせないため（このNode環境はネット遮断でCDN取得不可）、`<script>` タグの中身を抽出し、`transformTimetable` 等の関数を直接Node.jsで叩いて検証してきた。モックのExcelJS的ワークシート/ワークブックオブジェクト（`getRow/getCell/isMerged/master/style` 等を持つ）を自作してテストしている。実データ（学校名等は伏せたテスト用ファイル）で手動作成済みのクラス別テーブルと完全一致することを都度確認しながら進めてきた。
 
-**現在の開発PC（Windows）での確認方法（2026-09-06〜）**：Node.js・Pythonは入っていない（`python` はWindowsストアの空のエイリアスで実行できない）。そのため、PowerShell標準機能だけで動く `serve.ps1` で `http://localhost:8420/` にアプリを配信し、Claude Codeのブラウザ画面で実際に開いて確認している。`file://` で直接開くとブラウザ画面が静止画扱いになりJSが動かないため、必ずサーバー経由で開くこと。ブラウザのコンソールから `buildTemplateWorkbook()` → `handleFileA(file)` などアプリ内の関数を直接呼べば、ファイル選択の操作なしで一連の流れを試せる。
+**現在の開発PC（Windows）での確認方法（2026-09-06〜）**：Node.js・Pythonは入っていない（`python` はWindowsストアの空のエイリアスで実行できない）。そのため、PowerShell標準機能だけで動く `serve.ps1` で `http://localhost:8421/` にアプリを配信し、Claude Codeのブラウザ画面で実際に開いて確認している。`file://` で直接開くとブラウザ画面が静止画扱いになりJSが動かないため、必ずサーバー経由で開くこと。ブラウザのコンソールから `buildTemplateWorkbook()` → `handleFileA(file)` などアプリ内の関数を直接呼べば、ファイル選択の操作なしで一連の流れを試せる。
 
 ## 既知の制約・今後の検討事項
 - （2026-09-06対応済み）ExcelJSは以前CDN経由で読み込んでいたが、ライブラリ本体（exceljs.min.js, 4.4.0）をHTMLファイルに直接埋め込む形に変更し、インターネット接続なしで動作するようにした。ファイルサイズは約1MBに増えたが、単一HTMLファイルで完結する設計は維持している。ライブラリを更新する場合は、`<script>` タグ内のバンドル済みコードを新しいcdnjs版の内容で丸ごと置き換える（このとき、ライブラリのソース中に `</script` という文字列が含まれていないか確認し、あれば `<\/script` にエスケープしてからでないと、そこでタグが途切れてHTMLが壊れる）。
